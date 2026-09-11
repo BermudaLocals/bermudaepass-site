@@ -2047,10 +2047,10 @@ if('serviceWorker' in navigator){
     var raw = localStorage.getItem(STORAGE_KEY);
     if(!raw){ return; }
     var pass = JSON.parse(raw);
-    var dep = new Date(pass.departure).getTime();
+    var dep = new Date(pass.purchaseTime).getTime() + (24 * 3600000);
     var bar = document.getElementById('shipCountdownBar');
     if(!bar){ return; }
-    bar.style.display = 'block';
+    bar.style.display = 'none'; // disabled - not needed
     document.getElementById('cdShipName').textContent = pass.shipName;
 
     function tick(){
