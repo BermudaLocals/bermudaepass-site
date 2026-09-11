@@ -1,0 +1,13 @@
+{
+  "updated": "2026-09-12T00:00:00Z",
+  "vendors": [
+    { "slug": "snorkel-park",  "name": "Snorkel Park",   "desc": "Dockyard beach",     "featured": false, "paid_until": null },
+    { "slug": "tobacco-bay",   "name": "Tobacco Bay",    "desc": "St George's snorkel","featured": false, "paid_until": null },
+    { "slug": "hartley",       "name": "Hartley's",      "desc": "Helmet diving",      "featured": false, "paid_until": null },
+    { "slug": "rugged",        "name": "Rugged",         "desc": "Airport EV",         "featured": false, "paid_until": null },
+    { "slug": "grotto-bay",    "name": "Grotto Bay",     "desc": "Cave resort",        "featured": false, "paid_until": null },
+    { "slug": "coco-reef",     "name": "Coco Reef",      "desc": "Pink sand resort",   "featured": false, "paid_until": null },
+    { "slug": "astwood-arms",  "name": "Astwood Arms",   "desc": "Front St pub",       "featured": false, "paid_until": null },
+    { "slug": "island-tours",  "name": "Island Tours",   "desc": "Dockyard tours",     "featured": false, "paid_until": null }
+  ]
+}

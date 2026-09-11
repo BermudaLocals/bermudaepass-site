@@ -1900,44 +1900,65 @@ if('serviceWorker' in navigator){
 }
 </script>
 <script>
-// Bermuda ePass - Local Partners slider
+// Bermuda ePass — Local Partners slider (dynamic from vendors.json)
 (function(){
-  function inject(){
+  var VENDORS_URL = '/vendors.json';
+
+  function render(partners){
     var pills = document.querySelector('.filter-btn');
-    if(!pills) { return false; }
+    if(!pills){ return; }
     var container = pills.parentNode;
-    if(container.querySelector('.partners-section')) { return true; } // already added
-    var partners = [
-      {slug:'snorkel-park', name:'Snorkel Park', desc:'Dockyard beach', img:'/images/vendors/snorkel-park-1.jpg'},
-      {slug:'tobacco-bay', name:'Tobacco Bay', desc:"St George's snorkel", img:'/images/vendors/tobacco-bay-1.jpg'},
-      {slug:'hartley', name:'Hartley\'s', desc:'Helmet diving', img:'/images/vendors/hartley-1.jpg'},
-      {slug:'rugged', name:'Rugged', desc:'Airport EV', img:'/images/vendors/rugged-1.jpg'},
-      {slug:'grotto-bay', name:'Grotto Bay', desc:'Cave resort', img:'/images/vendors/grotto-bay-1.jpg'},
-      {slug:'coco-reef', name:'Coco Reef', desc:'Pink sand resort', img:'/images/vendors/coco-reef-1.jpg'},
-      {slug:'astwood-arms', name:'Astwood Arms', desc:'Front St pub', img:'/images/vendors/astwood-arms-1.jpg'},
-      {slug:'island-tours', name:'Island Tours', desc:'Dockyard tours', img:'/images/vendors/island-tours-1.jpg'}
-    ];
+    if(container.querySelector('.partners-section')){ return; }
+
+    // Featured vendors come first
+    partners.sort(function(a,b){
+      return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+    });
+
     var h = '<div class="partners-section" style="padding:12px 0 8px;">';
     h += '<div style="font-size:14px;font-weight:700;padding:0 16px 8px;color:#0A1628;font-family:Outfit,sans-serif;">🇧🇲 Local Partners</div>';
     h += '<div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px 12px;-webkit-overflow-scrolling:touch;">';
+
     partners.forEach(function(p){
-      h += '<a href="/' + p.slug + '/" style="flex:0 0 130px;scroll-snap-align:start;background:#fff;border-radius:12px;overflow:hidden;text-decoration:none;color:#0A1628;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:block;">';
-      h += '<img src="' + p.img + '" style="width:100%;height:85px;object-fit:cover;display:block;" loading="lazy">';
+      h += '<a href="/' + p.slug + '/" style="flex:0 0 130px;scroll-snap-align:start;background:#fff;border-radius:12px;overflow:hidden;text-decoration:none;color:#0A1628;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:block;position:relative;">';
+      if(p.featured){
+        h += '<div style="position:absolute;top:6px;right:6px;background:#E8A020;color:#fff;font-size:9px;font-weight:700;padding:3px 6px;border-radius:100px;z-index:2;letter-spacing:0.5px;">⭐ FEATURED</div>';
+      }
+      h += '<img src="/images/vendors/' + p.slug + '-1.jpg" style="width:100%;height:85px;object-fit:cover;display:block;" loading="lazy" onerror="this.style.display=\'none\'">';
       h += '<div style="padding:8px;"><strong style="display:block;font-size:13px;">' + p.name + '</strong><span style="font-size:11px;color:#6B7B84;">' + p.desc + '</span></div>';
       h += '</a>';
     });
+
     h += '</div></div>';
     container.insertAdjacentHTML('afterend', h);
-    return true;
   }
-  if(document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inject);
+
+  function fallback(){
+    render([
+      {slug:'snorkel-park', name:'Snorkel Park', desc:'Dockyard beach', featured:false},
+      {slug:'tobacco-bay',  name:'Tobacco Bay',  desc:"St George's snorkel", featured:false},
+      {slug:'hartley',      name:"Hartley's",    desc:'Helmet diving', featured:false},
+      {slug:'rugged',       name:'Rugged',       desc:'Airport EV', featured:false},
+      {slug:'grotto-bay',   name:'Grotto Bay',   desc:'Cave resort', featured:false},
+      {slug:'coco-reef',    name:'Coco Reef',    desc:'Pink sand resort', featured:false},
+      {slug:'astwood-arms', name:'Astwood Arms', desc:'Front St pub', featured:false},
+      {slug:'island-tours', name:'Island Tours', desc:'Dockyard tours', featured:false}
+    ]);
+  }
+
+  function load(){
+    fetch(VENDORS_URL + '?t=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(data){ render(data.vendors || []); })
+      .catch(fallback);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', load);
   } else {
-    inject();
+    setTimeout(load, 400);
   }
-  // Retry in case EXPLORE screen renders late
-  setTimeout(inject, 500);
-  setTimeout(inject, 1500);
+  setTimeout(load, 1500);
 })();
 </script>
 
