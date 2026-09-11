@@ -440,6 +440,16 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
 .btn-confirm{width:100%;padding:17px;background:linear-gradient(135deg,var(--coral),#E87060);color:#fff;border:none;border-radius:100px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(212,97,74,0.4);}
 .booking-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2999;display:none;}
 .booking-overlay.show{display:block;}
+
+/* Ship Pass — fix floating button overlap */
+.btn-unlock[style*="position:fixed"],
+.sticky-unlock,
+.floating-cta {
+  bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  z-index: 500 !important;
+}
+.bottom-nav { z-index: 900 !important; }
+
 </style>
 </head>
 <body>
@@ -491,7 +501,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
       <li>HOT NOW live island pulse map</li>
     </ul>
     <button class="btn-free-trial" onclick="startFreeTrial()">🎉 Start My Free Hour</button>
-    <button class="btn-unlock" onclick="unlockPremium()">Unlock Full Day — $2.00</button>
+    <button class="btn-unlock" onclick="unlockPremium()">Unlock Port Pass — $2.99</button>
     <button class="btn-restore" onclick="restorePurchase()">Restore Purchase</button>
     <div class="paywall-seal">🔒 Secured · Works offline · Instant access</div>
   </div>
@@ -521,7 +531,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
     <h2>Your Free Hour is Up!</h2>
     <p>Hope you loved exploring Bermuda with Marcus. Unlock the full day pass to keep going.</p>
     <div class="trial-timer" id="trialTimerLabel"></div>
-    <button class="btn-unlock" onclick="unlockPremium()" style="width:100%;margin-bottom:10px;">Unlock Full Day — $2.00</button>
+    <button class="btn-unlock" onclick="unlockPremium()" style="width:100%;margin-bottom:10px;">Unlock Port Pass — $2.99</button>
     <button class="btn-restore" onclick="restorePurchase()">Restore Purchase</button>
   </div>
 </div>
@@ -1930,6 +1940,183 @@ if('serviceWorker' in navigator){
   setTimeout(inject, 1500);
 })();
 </script>
+
+<!-- ══════════════════════════════════════════
+     SHIP PASS MODAL + COUNTDOWN
+     Injected by patch_shippass.py
+════════════════════════════════════════════ -->
+<div id="shipPickerModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(10,22,40,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:20px;max-width:400px;width:100%;padding:28px 24px;box-shadow:0 30px 80px rgba(0,0,0,0.5);">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:44px;margin-bottom:8px;">🚢</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:22px;color:#0A1628;margin:0 0 6px;">Which ship are you on?</h2>
+      <p style="color:#6B7B84;font-size:14px;margin:0;">Your Port Pass expires when your ship leaves</p>
+    </div>
+    <div id="shipListContainer" style="max-height:320px;overflow-y:auto;margin-bottom:16px;"></div>
+    <button onclick="closeShipPicker()" style="width:100%;padding:14px;background:#F7EDD8;color:#0A1628;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">Cancel</button>
+  </div>
+</div>
+
+<div id="shipCountdownBar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:1500;background:linear-gradient(90deg,#D4614A,#E87060);color:#fff;padding:10px 16px;text-align:center;font-family:'Outfit',sans-serif;box-shadow:0 4px 16px rgba(212,97,74,0.4);">
+  <div style="font-size:11px;opacity:0.9;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Back to ship</div>
+  <div style="font-size:18px;font-weight:800;"><span id="cdShipName">Ship</span> departs in <span id="cdTimer">--:--</span></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// BERMUDA ePASS — SHIP PASS LOGIC
+// ══════════════════════════════════════════
+(function(){
+  var SHIPS_URL = '/ships.json';
+  var STORAGE_KEY = 'epass_ship_pass';
+  var shipsCache = null;
+
+  // ── Fetch ships.json ──
+  function loadShips(cb){
+    if(shipsCache){ cb(shipsCache); return; }
+    fetch(SHIPS_URL + '?t=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(data){ shipsCache = data.ships || []; cb(shipsCache); })
+      .catch(function(err){
+        console.warn('Ship schedule failed to load:', err);
+        cb([]);
+      });
+  }
+
+  // ── Open ship picker ──
+  window.openShipPicker = function(){
+    var modal = document.getElementById('shipPickerModal');
+    var list = document.getElementById('shipListContainer');
+    modal.style.display = 'flex';
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7B84;">Loading ships...</div>';
+    loadShips(function(ships){
+      if(!ships.length){
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:#6B7B84;font-size:14px;">No ships scheduled today. Enter departure manually:</div><input id="manualDep" type="time" style="width:100%;padding:12px;border:2px solid #EDDFBF;border-radius:10px;font-size:16px;margin-top:8px;"><button onclick="manualShipSelect()" style="margin-top:10px;width:100%;padding:14px;background:#D4614A;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;">Confirm</button>';
+        return;
+      }
+      var h = '';
+      ships.forEach(function(s){
+        h += '<button onclick="selectShip(\'' + s.name.replace(/'/g, "\\'") + '\',\'' + s.departure + '\',\'' + (s.berth || '') + '\')" ';
+        h += 'style="width:100%;padding:14px 16px;margin-bottom:8px;background:#F7EDD8;border:2px solid #EDDFBF;border-radius:12px;text-align:left;cursor:pointer;font-family:Outfit,sans-serif;">';
+        h += '<strong style="display:block;font-size:15px;color:#0A1628;">' + s.name + '</strong>';
+        h += '<span style="font-size:12px;color:#6B7B84;">' + s.arrival + ' → ' + s.departure + ' · ' + (s.berth || 'Dockyard') + '</span>';
+        h += '</button>';
+      });
+      list.innerHTML = h;
+    });
+  };
+
+  window.closeShipPicker = function(){
+    document.getElementById('shipPickerModal').style.display = 'none';
+  };
+
+  // ── Select a ship ──
+  window.selectShip = function(name, departure, berth){
+    // Build today's departure Date
+    var parts = departure.split(':');
+    var dep = new Date();
+    dep.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+    if(dep.getTime() < Date.now()){ dep.setDate(dep.getDate() + 1); } // next day if already passed
+
+    var pass = {
+      shipName: name,
+      berth: berth || 'Dockyard',
+      departure: dep.toISOString(),
+      purchaseTime: new Date().toISOString(),
+      type: 'port'
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pass));
+    closeShipPicker();
+    showToast && showToast('🚢 ' + name + ' · Back by ' + departure);
+    startCountdown();
+    // Unlock premium if function exists
+    if(typeof unlockPremium === 'function'){
+      try { unlockPremium(); } catch(e){}
+    }
+  };
+
+  window.manualShipSelect = function(){
+    var t = document.getElementById('manualDep');
+    if(!t || !t.value) return;
+    selectShip('Your ship', t.value, 'Dockyard');
+  };
+
+  // ── Countdown ──
+  var cdInterval = null;
+  function startCountdown(){
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){ return; }
+    var pass = JSON.parse(raw);
+    var dep = new Date(pass.departure).getTime();
+    var bar = document.getElementById('shipCountdownBar');
+    if(!bar){ return; }
+    bar.style.display = 'block';
+    document.getElementById('cdShipName').textContent = pass.shipName;
+
+    function tick(){
+      var now = Date.now();
+      var diff = dep - now;
+      var timer = document.getElementById('cdTimer');
+      if(!timer){ return; }
+      if(diff <= 0){
+        timer.textContent = 'DEPARTED';
+        document.getElementById('shipCountdownBar').style.background = '#6B7B84';
+        clearInterval(cdInterval);
+        // Auto-expire: lock premium
+        try {
+          localStorage.removeItem('epass_premium');
+          if(typeof showToast === 'function'){ showToast('🚢 Ship departed — pass ended'); }
+        } catch(e){}
+        return;
+      }
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      // Nudges
+      if(h === 0 && m === 15){ if(typeof showToast==='function'){ showToast('⚠️ 15 min to ship — go NOW'); } }
+      if(h === 1 && m === 0){ if(typeof showToast==='function'){ showToast('⏰ 1 hour to ship — head back'); } }
+      if(h === 2 && m === 0){ if(typeof showToast==='function'){ showToast('🚕 2 hours to ship — start planning return'); } }
+      timer.textContent = h + 'h ' + (m < 10 ? '0' + m : m) + 'm';
+    }
+    tick();
+    if(cdInterval){ clearInterval(cdInterval); }
+    cdInterval = setInterval(tick, 30000);
+  }
+
+  // ── On load: resume countdown if pass exists ──
+  function boot(){
+    if(localStorage.getItem(STORAGE_KEY)){
+      startCountdown();
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    setTimeout(boot, 400);
+  }
+
+  // ── Hook into the Port Pass button ──
+  // The next time user taps any "Unlock Port Pass" button, open picker first.
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if(!t) return;
+    var txt = (t.textContent || '').toLowerCase();
+    if(txt.indexOf('unlock port pass') !== -1 || txt.indexOf('unlock full day') !== -1){
+      if(!localStorage.getItem(STORAGE_KEY)){
+        e.preventDefault();
+        e.stopPropagation();
+        openShipPicker();
+        return false;
+      }
+    }
+  }, true);
+
+  window.getShipPass = function(){
+    var raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  };
+})();
+</script>
+
 </body>
 </html>
 // bump Mon Sep  7 10:53:29 CEST 2026

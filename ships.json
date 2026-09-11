@@ -1,0 +1,11 @@
+{
+  "updated": "2026-09-12T06:00:00Z",
+  "ships": [
+    { "name": "Norwegian Breakaway",    "arrival": "08:00", "departure": "16:00", "berth": "King's Wharf" },
+    { "name": "Vision of the Seas",     "arrival": "09:00", "departure": "17:00", "berth": "Heritage Wharf" },
+    { "name": "Celebrity Summit",       "arrival": "10:00", "departure": "18:00", "berth": "King's Wharf" },
+    { "name": "Carnival Magic",         "arrival": "08:30", "departure": "16:30", "berth": "Heritage Wharf" },
+    { "name": "MSC Meraviglia",         "arrival": "11:00", "departure": "19:00", "berth": "King's Wharf" },
+    { "name": "Royal Caribbean Oasis",  "arrival": "07:00", "departure": "15:00", "berth": "King's Wharf" }
+  ]
+}
