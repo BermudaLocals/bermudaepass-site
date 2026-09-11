@@ -1,0 +1,58 @@
+{
+  "name": "Bermuda ePass - Official Visitor Guide",
+  "short_name": "Bermuda ePass",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A6E8A",
+  "theme_color": "#0A6E8A",
+  "description": "Your official Bermuda digital travel companion. Exclusive discounts, AI guide, cruise-ready offline PWA.",
+  "scope": "/",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "lifestyle", "utilities"],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Bermuda ePass Home Screen"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My ePass",
+      "short_name": "ePass",
+      "description": "View your digital pass",
+      "url": "#profile"
+    },
+    {
+      "name": "AI Guide",
+      "short_name": "Ask Marcus",
+      "description": "Chat with your AI guide",
+      "url": "#chat"
+    },
+    {
+      "name": "Book Now",
+      "short_name": "Book",
+      "description": "Book tours and experiences",
+      "url": "#book"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,42 @@
+# ===== SECRETS - NEVER COMMIT =====
+.env
+.env.*
+*.pem
+*.key
+*.crt
+credentials.json
+service-account*.json
+
+# ===== DEPENDENCIES =====
+node_modules/
+vendor/
+__pycache__/
+*.pyc
+
+# ===== BACKUPS =====
+*.bak
+*.bak-*
+*.broken-*
+*.old
+*~
+
+# ===== LOGS & CACHE =====
+*.log
+logs/
+.cache/
+npm-debug.log*
+yarn-error.log*
+
+# ===== RUNTIME DATA =====
+live-events.json
+
+# ===== BUILDS =====
+dist/
+build/
+
+# ===== OS / EDITOR =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

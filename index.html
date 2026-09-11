@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bermuda ePass">
+<meta name="theme-color" content="#0A1628">
+<meta name="description" content="Your official Bermuda digital travel companion. AI tour guide, cruise-ready offline PWA. First hour FREE.">
+<title>Bermuda ePass — Official Visitor Guide</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ══════════════════════════════════════════
+   BERMUDA ePASS v4.0 — DAY/NIGHT EDITION
+   Pink Sand → Front Street Nightlife
+══════════════════════════════════════════ */
+:root {
+  /* CORE PALETTE */
+  --ocean:#0A6E8A; --ocean-mid:#1A9BBF; --ocean-deep:#064C6A; --ocean-light:#D4EEF5;
+  --night:#0A1628; --night-mid:#162640; --night-glow:#1E3A5F;
+  --sand:#F7EDD8; --sand-mid:#EDDFBF; --sand-warm:#FFF0D9;
+  --pink-sand:#FFB8C0; --pink-glow:rgba(255,184,192,0.3);
+  --coral:#D4614A; --coral-light:#FAE8E4; --coral-glow:rgba(212,97,74,0.4);
+  --gold:#C9A84C; --gold-bright:#E8A020; --gold-glow:rgba(232,160,32,0.4);
+  --white:#FEFCF8; --text:#0A1628; --muted:#6B7B84;
+  --border:rgba(10,110,138,0.12);
+  --neon-blue:#00D4FF; --neon-pink:#FF2D78; --neon-gold:#FFD700;
+  --success:#00C853; --urgent:#FF3B30;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+  --radius:20px; --shadow:0 8px 32px rgba(10,22,40,0.18);
+  /* DAY/NIGHT THEME (JS toggled) */
+  --hero-bg1:#1A7FB5; --hero-bg2:#4ABFDF;
+  --hero-text:#FFFFFF;
+  --scene-label:"🌅 Good Morning, Bermuda";
+}
+[data-time="night"] {
+  --hero-bg1:#0A1628; --hero-bg2:#162640;
+  --scene-label:"🌃 Good Evening, Bermuda";
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background:var(--night);color:var(--text);overscroll-behavior:none;}
+
+/* ── APP SHELL ── */
+#app{height:100%;display:flex;flex-direction:column;max-width:430px;margin:0 auto;background:var(--white);position:relative;overflow:hidden;box-shadow:0 0 80px rgba(0,0,0,0.6);}
+.status-bar{height:calc(var(--safe-top) + 6px);flex-shrink:0;transition:background 1.2s;}
+
+/* ── SCREENS ── */
+.screen{display:none;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* ══ SPLASH ══ */
+#splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.7s;overflow:hidden;}
+#splash.hide{opacity:0;pointer-events:none;}
+.splash-day{position:absolute;inset:0;background:linear-gradient(160deg,#1A7FB5 0%,#4ABFDF 35%,#FFB8C0 65%,#FFD4A0 100%);transition:opacity 1.5s;}
+.splash-night{position:absolute;inset:0;background:linear-gradient(160deg,#0A1628 0%,#162640 40%,#1E1438 70%,#2A0A20 100%);opacity:0;transition:opacity 1.5s;}
+#splash.night .splash-day{opacity:0;}
+#splash.night .splash-night{opacity:1;}
+.splash-stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 10% 20%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 30% 50%,rgba(255,255,255,0.8) 0%,transparent 100%),radial-gradient(1px 1px at 60% 15%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 80% 40%,rgba(255,255,255,0.6) 0%,transparent 100%),radial-gradient(1px 1px at 50% 70%,#fff 0%,transparent 100%);opacity:0;transition:opacity 1.5s;}
+#splash.night .splash-stars{opacity:1;}
+.splash-content{position:relative;text-align:center;padding:48px 32px;}
+.splash-icon{width:96px;height:96px;border-radius:28px;background:rgba(255,255,255,0.18);backdrop-filter:blur(20px);border:2px solid rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;font-size:48px;margin:0 auto 20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:splashPop 0.6s ease;}
+@keyframes splashPop{from{transform:scale(0.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+.splash-title{font-family:'Playfair Display',serif;font-size:38px;color:#fff;text-shadow:0 2px 20px rgba(0,0,0,0.3);margin-bottom:6px;}
+.splash-sub{font-size:14px;color:rgba(255,255,255,0.8);letter-spacing:0.5px;margin-bottom:36px;}
+.splash-time-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:100px;padding:8px 18px;margin-bottom:28px;font-size:13px;color:#fff;font-weight:600;}
+.splash-loader{width:56px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden;margin:0 auto;}
+.splash-loader-bar{height:100%;background:rgba(255,255,255,0.9);border-radius:2px;animation:loadBar 2.2s ease forwards;}
+@keyframes loadBar{from{width:0%;}to{width:100%;}}
+.splash-geo{font-size:11px;color:rgba(255,255,255,0.55);margin-top:14px;min-height:16px;}
+
+/* ══ PAYWALL ══ */
+.paywall{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;overflow-y:auto;transition:opacity 0.4s;}
+.paywall.hidden{display:none;}
+.paywall-bg{position:absolute;inset:0;background:linear-gradient(180deg,#0A1628 0%,#0A3D52 60%,#0A1628 100%);}
+.paywall-content{position:relative;width:100%;max-width:380px;}
+.paywall-logo{width:88px;height:88px;background:linear-gradient(135deg,var(--ocean),var(--coral));border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 18px;box-shadow:0 20px 60px rgba(212,97,74,0.4);}
+.paywall h1{font-family:'Playfair Display',serif;font-size:28px;color:white;margin-bottom:10px;line-height:1.2;}
+.paywall-sub{color:rgba(255,255,255,0.65);font-size:14px;line-height:1.6;margin-bottom:20px;}
+.free-hour-box{background:linear-gradient(135deg,#00C853,#00A040);border-radius:18px;padding:18px 20px;margin-bottom:16px;text-align:left;}
+.free-hour-box .fh-title{font-size:20px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;}
+.free-hour-box .fh-sub{font-size:12px;color:rgba(255,255,255,0.85);margin-top:4px;}
+.paywall-or{font-size:11px;color:rgba(255,255,255,0.35);margin:12px 0;text-align:center;}
+.price-box{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:14px 20px;margin-bottom:16px;text-align:left;display:flex;align-items:center;gap:14px;}
+.price-box .amount{font-size:32px;font-weight:800;color:#fff;line-height:1;}
+.price-box .price-info .label{font-size:13px;color:rgba(255,255,255,0.8);font-weight:600;}
+.price-box .price-info .detail{font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;}
+.paywall-features{text-align:left;margin:14px 0 20px;}
+.paywall-features li{color:rgba(255,255,255,0.88);font-size:13px;padding:7px 0;list-style:none;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
+.paywall-features li:last-child{border:none;}
+.paywall-features li::before{content:'✓';color:var(--success);font-weight:800;font-size:15px;flex-shrink:0;}
+.btn-free-trial{width:100%;padding:18px;background:linear-gradient(135deg,#00C853,#00A040);color:white;border:none;border-radius:16px;font-size:17px;font-weight:800;cursor:pointer;margin-bottom:10px;box-shadow:0 8px 28px rgba(0,200,83,0.5);transition:transform 0.2s;font-family:'Outfit',sans-serif;}
+.btn-free-trial:active{transform:scale(0.98);}
+.btn-unlock{width:100%;padding:16px;background:linear-gradient(135deg,var(--coral),#E87060);color:white;border:none;border-radius:16px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 6px 20px rgba(212,97,74,0.4);transition:transform 0.2s;font-family:'Outfit',sans-serif;}
+.btn-unlock:active{transform:scale(0.98);}
+.btn-restore{background:none;border:none;color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;padding:8px;font-family:'Outfit',sans-serif;}
+.paywall-seal{font-size:10px;color:rgba(255,255,255,0.3);margin-top:12px;}
+
+/* ══ WELCOME MODAL (geo-triggered) ══ */
+#welcomeModal{position:fixed;inset:0;z-index:2.00;background:rgba(10,22,40,0.92);display:none;align-items:center;justify-content:center;padding:20px;}
+#welcomeModal.show{display:flex;animation:fadeIn 0.35s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.welcome-box{background:linear-gradient(180deg,#0D1F2D,#0A3D52);border:2px solid var(--gold);border-radius:26px;padding:28px 22px;max-width:400px;width:100%;text-align:center;max-height:88vh;overflow-y:auto;}
+.welcome-flag{font-size:48px;margin-bottom:8px;}
+.welcome-box h2{font-family:'Playfair Display',serif;color:#fff;font-size:24px;margin-bottom:6px;}
+#welcomeZone{color:rgba(255,255,255,0.7);font-size:13px;margin-bottom:14px;line-height:1.6;}
+.free-badge{background:linear-gradient(135deg,var(--gold-bright),#C87010);border-radius:14px;padding:14px;margin-bottom:16px;}
+.free-badge .fb-title{color:#fff;font-weight:800;font-size:17px;}
+.free-badge .fb-sub{color:rgba(255,255,255,0.85);font-size:11px;margin-top:3px;}
+.stay-label{color:#fff;font-size:13px;font-weight:600;margin-bottom:8px;text-align:left;}
+#stayGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px;}
+.stay-chip{background:rgba(255,255,255,0.06);border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:9px 6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.2s;}
+.stay-chip.sel{border-color:var(--gold);background:rgba(201,168,76,0.2);}
+.btn-claim{width:100%;padding:16px;background:linear-gradient(135deg,#D4614A,#E87060);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(212,97,74,0.4);}
+.btn-skip-welcome{background:none;border:none;color:rgba(255,255,255,0.35);font-size:12px;margin-top:10px;cursor:pointer;display:block;width:100%;}
+
+/* ══ TRIAL EXPIRED MODAL ══ */
+#trialExpiredModal{position:fixed;inset:0;z-index:4000;background:rgba(10,22,40,0.95);display:none;align-items:center;justify-content:center;padding:20px;}
+#trialExpiredModal.show{display:flex;animation:fadeIn 0.35s ease;}
+.trial-expired-box{background:linear-gradient(180deg,#0D1F2D,#0A3D52);border:2px solid var(--coral);border-radius:26px;padding:28px 22px;max-width:380px;width:100%;text-align:center;}
+.trial-expired-box h2{font-family:'Playfair Display',serif;color:#fff;font-size:24px;margin-bottom:8px;}
+.trial-expired-box p{color:rgba(255,255,255,0.7);font-size:13px;margin-bottom:20px;line-height:1.6;}
+.trial-timer{font-size:13px;color:var(--gold);font-weight:600;margin-bottom:16px;}
+
+/* ══ DAY/NIGHT HERO ══ */
+.hero{position:relative;height:400px;overflow:hidden;flex-shrink:0;}
+.hero-scene{position:absolute;inset:0;transition:opacity 1.5s ease;}
+/* DAY SCENE — Pink Sand Beach */
+.hero-day{
+  background:linear-gradient(170deg,#1A7FB5 0%,#4ABFDF 25%,#A8E6F0 40%,#FFD4A0 65%,#FFB8C0 80%,#F0A090 100%);
+}
+.hero-day::before{
+  content:'';position:absolute;inset:0;
+  background:url('horseshoe-beach.jpg') center/cover no-repeat;
+  opacity:0.75;
+  mix-blend-mode:normal;
+}
+.hero-day-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,22,40,0.1) 0%,transparent 40%,rgba(10,22,40,0.7) 100%);}
+/* NIGHT SCENE — Front Street Neon */
+.hero-night{
+  background:linear-gradient(170deg,#0A1628 0%,#162640 30%,#1E1438 60%,#2A0A20 100%);
+  opacity:0;
+}
+.hero-night::before{
+  content:'';position:absolute;inset:0;
+  background:url('frontstreet-night.jpg') center/cover no-repeat;
+  opacity:0.6;
+}
+.hero-night-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,22,40,0.3) 0%,transparent 30%,rgba(10,22,40,0.85) 100%);}
+/* NEON LIGHTS — night only */
+.neon-lights{position:absolute;inset:0;opacity:0;transition:opacity 1.5s;pointer-events:none;}
+.hero.night .hero-night{opacity:1;}
+.hero.night .hero-day{opacity:0;}
+.hero.night .neon-lights{opacity:1;}
+.neon-streak{position:absolute;border-radius:100px;filter:blur(8px);animation:neonPulse 3s ease-in-out infinite;}
+.neon-streak.s1{width:60px;height:4px;background:var(--neon-pink);top:40%;left:15%;animation-delay:0s;}
+.neon-streak.s2{width:40px;height:3px;background:var(--neon-blue);top:55%;right:20%;animation-delay:0.8s;}
+.neon-streak.s3{width:80px;height:4px;background:var(--neon-gold);top:35%;right:30%;animation-delay:1.6s;}
+@keyframes neonPulse{0%,100%{opacity:0.6;transform:scaleX(1);}50%{opacity:1;transform:scaleX(1.2);}}
+/* HERO CONTENT */
+.hero-content{position:absolute;bottom:0;left:0;right:0;padding:24px;z-index:10;}
+.scene-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.12);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.25);border-radius:100px;padding:6px 14px;margin-bottom:12px;}
+.scene-badge span{font-size:11px;font-weight:700;color:#fff;letter-spacing:0.8px;}
+.hero-title{font-family:'Playfair Display',serif;font-size:30px;color:#fff;line-height:1.15;text-shadow:0 2px 16px rgba(0,0,0,0.5);}
+.hero-sub{font-size:13px;color:rgba(255,255,255,0.82);margin-top:5px;text-shadow:0 1px 8px rgba(0,0,0,0.4);}
+/* Weather chip */
+.weather-chip{position:absolute;top:16px;right:16px;background:rgba(10,22,40,0.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.18);border-radius:18px;padding:10px 14px;text-align:center;z-index:10;}
+.weather-chip .temp{font-size:20px;font-weight:300;color:white;display:block;line-height:1;}
+.weather-chip .cond{font-size:9px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;margin-top:2px;}
+
+/* ── SHIP BANNER ── */
+.ship-banner{background:linear-gradient(90deg,var(--ocean-deep),var(--ocean));color:white;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;flex-shrink:0;}
+.ship-banner .ship-name{flex:1;opacity:0.9;}
+.countdown-pill{background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-weight:700;font-size:13px;}
+/* URGENCY BAR */
+.urgency-bar{background:var(--urgent);color:white;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;flex-shrink:0;}
+.urgency-bar button{margin-left:auto;background:white;color:var(--urgent);padding:7px 14px;border-radius:20px;border:none;font-size:11px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;flex-shrink:0;white-space:nowrap;}
+
+/* ── LIVE TICKER ── */
+.live-ticker{background:var(--ocean);padding:7px 0;overflow:hidden;white-space:nowrap;flex-shrink:0;}
+.ticker-scroll{display:inline-flex;gap:48px;animation:tickerMove 30s linear infinite;}
+@keyframes tickerMove{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.ticker-item{font-size:11px;font-weight:500;color:rgba(255,255,255,0.9);}
+
+/* ── SECTION ── */
+.section{padding:18px 16px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title{font-size:18px;font-weight:800;color:var(--night);}
+.section-link{font-size:12px;color:var(--ocean);font-weight:700;cursor:pointer;}
+
+/* ── QUICK GRID ── */
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.quick-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 4px;border-radius:16px;cursor:pointer;border:none;transition:all 0.15s;font-family:'Outfit',sans-serif;}
+.quick-btn.day-btn{background:rgba(26,127,181,0.1);}
+.quick-btn.night-btn{background:rgba(255,45,120,0.1);}
+.hero.night ~ * .quick-btn.day-btn,.hero.night~.section .quick-btn{display:none;}
+.quick-btn:active{transform:scale(0.95);}
+.quick-btn .qicon{font-size:22px;}
+.quick-btn .qlabel{font-size:10px;font-weight:700;color:var(--muted);}
+
+/* ── CARD SCROLL ── */
+.card-scroll{display:flex;gap:12px;overflow-x:auto;padding:0 16px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.card-scroll::-webkit-scrollbar{display:none;}
+
+/* ── PLACE CARD ── */
+.place-card{min-width:190px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);flex-shrink:0;cursor:pointer;transition:transform 0.2s;}
+.place-card:active{transform:scale(0.97);}
+.place-img{width:100%;height:130px;object-fit:cover;display:block;}
+.place-info{padding:12px;background:white;}
+.place-name{font-weight:700;font-size:14px;color:var(--night);}
+.place-type{font-size:10px;color:var(--ocean);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+.place-badge{display:inline-block;margin-top:6px;padding:3px 8px;background:var(--ocean-light);border-radius:100px;font-size:9px;color:var(--ocean);font-weight:700;}
+/* ── NIGHT CARD (bars/restaurants) ── */
+.night-card{min-width:190px;border-radius:var(--radius);overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--night-mid);box-shadow:0 8px 28px rgba(0,0,0,0.4);}
+.night-card-img{width:100%;height:130px;background:linear-gradient(135deg,#1E1438,#2A0A20);display:flex;align-items:center;justify-content:center;font-size:52px;}
+.night-card-info{padding:12px;}
+.night-card-info .nc-name{font-weight:700;font-size:14px;color:#fff;}
+.night-card-info .nc-type{font-size:10px;color:var(--neon-pink);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;}
+.night-card-info .nc-vibe{font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px;}
+.nc-badge{display:inline-block;margin-top:6px;padding:3px 8px;background:rgba(255,45,120,0.2);border:1px solid rgba(255,45,120,0.4);border-radius:100px;font-size:9px;color:var(--neon-pink);font-weight:700;}
+
+/* ── EPASS CARD ── */
+.epass-section{padding:0 16px 16px;}
+.epass-card{border-radius:24px;overflow:hidden;box-shadow:0 16px 48px rgba(10,110,138,0.35);}
+.epass-bg{background:linear-gradient(135deg,#064C6A 0%,#0A6E8A 40%,#1A9BBF 100%);padding:24px 22px;}
+.epass-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.epass-brand{font-size:11px;font-weight:800;color:rgba(255,255,255,0.8);letter-spacing:2px;text-transform:uppercase;}
+.epass-name{font-family:'Playfair Display',serif;font-size:24px;color:#fff;margin-bottom:3px;}
+.epass-country{font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:2px;}
+.epass-meta{display:flex;gap:20px;margin:14px 0;}
+.epass-meta-item label{font-size:9px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;display:block;}
+.epass-meta-item span{font-size:13px;color:#fff;font-weight:600;}
+.epass-qr{width:72px;height:72px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ocean);font-weight:700;text-align:center;padding:8px;margin:0 auto;}
+.epass-tier{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:100px;padding:5px 12px;font-size:10px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:12px;}
+.trial-badge{background:linear-gradient(135deg,#00C853,#00A040);}
+.premium-badge{background:linear-gradient(135deg,#C9A84C,#E8A020);}
+
+/* ── PACKAGE CARDS ── */
+.package-card{background:white;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:12px;cursor:pointer;transition:transform 0.2s;}
+.package-card:active{transform:scale(0.99);}
+.pkg-img{height:150px;position:relative;overflow:hidden;}
+.pkg-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.pkg-badge{position:absolute;top:12px;left:12px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;}
+.pkg-badge.save{background:var(--gold-bright);}
+.pkg-badge.hot{background:var(--coral);}
+.pkg-badge.night{background:var(--neon-pink);}
+.pkg-info{padding:14px;}
+.pkg-info h4{font-size:15px;font-weight:800;color:var(--night);margin-bottom:4px;}
+.pkg-includes{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.pkg-price-row{display:flex;align-items:center;gap:10px;}
+.pkg-price{font-size:22px;font-weight:800;color:var(--ocean);}
+.pkg-orig{font-size:12px;color:var(--muted);text-decoration:line-through;}
+.pkg-save-pill{background:var(--success);color:white;font-size:9px;font-weight:800;padding:3px 8px;border-radius:8px;}
+.btn-book{margin-left:auto;background:var(--coral);color:white;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:700;border:none;cursor:pointer;font-family:'Outfit',sans-serif;}
+
+/* ── DRINKS SECTION ── */
+.rum-card{background:linear-gradient(135deg,var(--night),#2A1A3A);border-radius:var(--radius);padding:20px;margin:0 16px 16px;}
+.rum-card h3{font-family:'Playfair Display',serif;color:var(--gold);font-size:20px;margin-bottom:4px;}
+.rum-card p{color:rgba(255,255,255,0.65);font-size:13px;line-height:1.6;margin-bottom:14px;}
+.rum-drinks{display:flex;flex-direction:column;gap:8px;}
+.rum-drink{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.06);border-radius:12px;padding:10px 12px;}
+.rum-drink .rd-icon{font-size:24px;flex-shrink:0;}
+.rum-drink .rd-name{font-size:13px;font-weight:700;color:#fff;}
+.rum-drink .rd-desc{font-size:11px;color:rgba(255,255,255,0.5);}
+.rum-drink .rd-price{margin-left:auto;font-size:14px;font-weight:800;color:var(--gold);}
+
+/* ── HOT NOW SECTION ── */
+.hotnow-section{padding:0 0 8px;}
+.hotnow-header{padding:14px 16px 8px;display:flex;align-items:center;justify-content:space-between;}
+.hotnow-header h3{font-size:17px;font-weight:800;color:var(--night);}
+.live-pill{background:var(--urgent);color:#fff;font-size:9px;font-weight:800;padding:4px 8px;border-radius:20px;animation:livePulse 1.8s infinite;}
+@keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+#hotspot-map{height:260px;width:100%;}
+#hotspotList{display:flex;gap:8px;overflow-x:auto;padding:10px 16px 4px;scrollbar-width:none;}
+#hotspotList::-webkit-scrollbar{display:none;}
+.hot-chip{flex-shrink:0;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);min-width:148px;cursor:pointer;transition:transform 0.2s;}
+.hot-chip:active{transform:scale(0.96);}
+.hot-chip .hc-name{font-size:11px;font-weight:800;color:var(--night);}
+.hot-chip .hc-tag{font-size:10px;color:var(--muted);margin-top:2px;}
+.hot-chip .hc-status{font-size:9px;font-weight:800;margin-top:4px;}
+@keyframes pinPing{from{transform:scale(0.6);opacity:0.9;}to{transform:scale(1.9);opacity:0;}}
+.hot-pin::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--urgent);animation:pinPing 1.6s ease-out infinite;}
+.hot-pin{position:relative;}
+
+/* ── EMPIRE NETWORK ── */
+.empire-section{margin:0 16px 20px;background:linear-gradient(135deg,var(--night),var(--night-mid));border-radius:var(--radius);padding:16px;}
+.empire-label{font-size:10px;font-weight:800;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+.empire-link{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border-radius:12px;padding:11px 12px;text-decoration:none;margin-bottom:7px;transition:background 0.2s;}
+.empire-link:last-child{margin-bottom:0;}
+.empire-link:active{background:rgba(255,255,255,0.1);}
+.empire-link .el-icon{font-size:20px;flex-shrink:0;}
+.empire-link .el-text{flex:1;color:#fff;font-size:13px;font-weight:600;}
+.empire-link .el-arrow{color:rgba(255,255,255,0.3);font-size:14px;}
+
+/* ── EXPLORE SCREEN ── */
+.explore-filter{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;scrollbar-width:none;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;}
+.explore-filter::-webkit-scrollbar{display:none;}
+.filter-btn{white-space:nowrap;padding:8px 16px;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid var(--border);background:#fff;color:var(--muted);transition:all 0.2s;flex-shrink:0;font-family:'Outfit',sans-serif;}
+.filter-btn.active{background:var(--ocean);color:#fff;border-color:var(--ocean);}
+#explore-map{height:260px;width:100%;flex-shrink:0;}
+.place-list{padding:10px 16px;display:flex;flex-direction:column;gap:10px;}
+.place-row{display:flex;gap:12px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);cursor:pointer;transition:transform 0.2s;}
+.place-row:active{transform:scale(0.98);}
+.place-row-img{width:90px;height:90px;object-fit:cover;flex-shrink:0;display:block;}
+.place-row-info{padding:10px;flex:1;}
+.place-row-name{font-size:14px;font-weight:700;color:var(--night);}
+.place-row-type{font-size:10px;color:var(--ocean);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:1px;}
+.place-row-desc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4;}
+.place-row-tag{display:inline-block;margin-top:5px;padding:3px 8px;background:var(--ocean-light);border-radius:100px;font-size:9px;color:var(--ocean);font-weight:700;}
+
+/* ── PLAN SCREEN ── */
+.plan-header{background:linear-gradient(135deg,var(--night),var(--night-mid));padding:calc(var(--safe-top) + 20px) 20px 20px;flex-shrink:0;}
+.plan-header h2{font-family:'Playfair Display',serif;font-size:24px;color:#fff;margin-bottom:4px;}
+.plan-header p{font-size:13px;color:rgba(255,255,255,0.55);}
+.day-tabs{display:flex;gap:8px;padding:12px 16px;overflow-x:auto;scrollbar-width:none;background:var(--sand-warm);flex-shrink:0;}
+.day-tabs::-webkit-scrollbar{display:none;}
+.day-tab{flex-shrink:0;padding:8px 16px;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,0.6);color:var(--muted);border:2px solid transparent;transition:all 0.2s;font-family:'Outfit',sans-serif;}
+.day-tab.active{background:var(--ocean);color:#fff;}
+.itinerary{padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
+.itinerary-item{display:flex;gap:12px;background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+.itinerary-time{font-size:12px;font-weight:700;color:var(--ocean);width:48px;flex-shrink:0;}
+.itinerary-dot{width:10px;height:10px;border-radius:50%;background:var(--ocean);flex-shrink:0;margin-top:4px;}
+.itinerary-content .ic-name{font-size:14px;font-weight:700;color:var(--night);}
+.itinerary-content .ic-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+.add-plan-btn{margin:8px 16px 20px;width:calc(100% - 32px);padding:14px;border-radius:100px;border:2px dashed var(--border);background:transparent;color:var(--ocean);font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
+
+/* ── AI CHAT ── */
+.chat-wrap{display:flex;flex-direction:column;height:100%;}
+.chat-header{background:var(--night);padding:calc(var(--safe-top) + 16px) 16px 14px;flex-shrink:0;}
+.chat-header-row{display:flex;align-items:center;gap:12px;}
+.marcus-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--ocean),var(--ocean-mid));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:2px solid rgba(255,255,255,0.2);}
+.chat-header .ch-name{font-size:16px;font-weight:700;color:#fff;}
+.chat-header .ch-status{font-size:11px;color:var(--success);display:flex;align-items:center;gap:4px;}
+.online-dot{width:6px;height:6px;border-radius:50%;background:var(--success);}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#F0F4F6;}
+.msg{max-width:84%;padding:11px 15px;border-radius:18px;font-size:14px;line-height:1.5;}
+.msg.ai{background:#fff;color:var(--night);border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.07);align-self:flex-start;}
+.msg.user{background:var(--ocean);color:#fff;border-bottom-right-radius:4px;align-self:flex-end;}
+.msg.typing{background:#fff;align-self:flex-start;padding:14px 16px;}
+.typing-dots{display:flex;gap:4px;}
+.typing-dots span{width:7px;height:7px;background:var(--muted);border-radius:50%;animation:bounce 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:0.2s;}
+.typing-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-8px);}}
+.suggest-chips{display:flex;gap:8px;padding:8px 14px;overflow-x:auto;scrollbar-width:none;background:#fff;border-top:1px solid var(--border);flex-shrink:0;}
+.suggest-chips::-webkit-scrollbar{display:none;}
+.chip{white-space:nowrap;padding:8px 14px;background:var(--ocean-light);border:none;border-radius:100px;font-size:12px;font-weight:700;color:var(--ocean);cursor:pointer;flex-shrink:0;font-family:'Outfit',sans-serif;}
+.chip:active{background:var(--ocean);color:#fff;}
+.chat-input-row{display:flex;gap:8px;padding:10px 14px;padding-bottom:calc(10px + var(--safe-bottom));background:#fff;border-top:1px solid var(--border);flex-shrink:0;}
+.chat-input{flex:1;padding:11px 16px;border:2px solid var(--border);border-radius:100px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;background:#F4F7F9;transition:border 0.2s;}
+.chat-input:focus{border-color:var(--ocean);background:#fff;}
+.btn-send{width:44px;height:44px;border-radius:50%;background:var(--ocean);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:transform 0.2s;}
+.btn-send:active{transform:scale(0.9);}
+
+/* ── PHOTOS SCREEN ── */
+.photos-header{background:var(--night);padding:calc(var(--safe-top) + 20px) 20px 20px;flex-shrink:0;}
+.photos-header h2{font-family:'Playfair Display',serif;font-size:22px;color:#fff;margin-bottom:3px;}
+.photos-header p{font-size:12px;color:rgba(255,255,255,0.5);}
+.photo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;padding:3px;}
+.photo-slot{aspect-ratio:1;background:var(--sand);border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;}
+.photo-slot.empty{background:rgba(10,110,138,0.05);border:2px dashed rgba(10,110,138,0.2);}
+.photo-slot img{width:100%;height:100%;object-fit:cover;}
+.photo-slot .add-icon{font-size:24px;color:var(--ocean);opacity:0.6;}
+
+/* ── PASS / PROFILE SCREEN ── */
+.pass-header{background:linear-gradient(135deg,var(--night),var(--night-mid));padding:calc(var(--safe-top) + 24px) 20px 20px;flex-shrink:0;}
+.pass-avatar{width:68px;height:68px;border-radius:50%;background:var(--ocean);display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px;border:3px solid rgba(255,255,255,0.15);}
+.pass-name{font-size:20px;font-weight:800;color:#fff;}
+.pass-sub{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;}
+.pass-tier-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.pass-tier-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border-radius:100px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.9);font-weight:700;}
+.pass-time-left{font-size:12px;color:var(--gold);font-weight:600;}
+.settings-section{padding:14px 16px;}
+.settings-title{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.settings-list{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.05);}
+.settings-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.2s;}
+.settings-item:last-child{border-bottom:none;}
+.settings-item:active{background:#f5f5f5;}
+.settings-icon{font-size:20px;width:28px;text-align:center;}
+.settings-text{flex:1;font-size:14px;font-weight:500;color:var(--night);}
+.settings-arrow{color:var(--muted);font-size:14px;}
+.btn-upgrade{width:calc(100% - 32px);margin:8px 16px 4px;padding:16px;background:linear-gradient(135deg,var(--gold-bright),#C87010);color:white;border:none;border-radius:100px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;box-shadow:0 6px 20px rgba(232,160,32,0.4);}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{height:calc(68px + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--white);border-top:1px solid var(--border);display:flex;flex-shrink:0;position:relative;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,0.07);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all 0.2s;border:none;background:none;padding:0;}
+.nav-icon{font-size:24px;line-height:1;transition:transform 0.2s;}
+.nav-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.4px;text-transform:uppercase;}
+.nav-item.active .nav-label{color:var(--ocean);}
+.nav-item.active .nav-icon{transform:translateY(-3px);filter:drop-shadow(0 2px 4px rgba(10,110,138,0.4));}
+
+/* ── MARCUS AVATAR ── */
+.avatar-guide{position:fixed;bottom:90px;right:14px;z-index:500;display:none;flex-direction:column;align-items:flex-end;gap:10px;}
+.avatar-guide.show{display:flex;}
+.avatar-bubble{background:white;border-radius:18px 18px 4px 18px;padding:12px 15px;max-width:230px;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-size:13px;line-height:1.5;color:var(--text);position:relative;animation:popIn 0.3s ease;}
+@keyframes popIn{from{opacity:0;transform:translateY(10px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+.avatar-bubble-close{position:absolute;top:-7px;right:-7px;width:22px;height:22px;background:var(--muted);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:white;cursor:pointer;border:none;}
+.avatar-btn{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--ocean),var(--ocean-mid));border:3px solid rgba(255,255,255,0.9);box-shadow:0 4px 20px rgba(10,110,138,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;position:relative;transition:transform 0.2s;}
+.avatar-btn:active{transform:scale(0.93);}
+.avatar-btn.speaking::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--ocean);animation:avatarPulse 1s ease infinite;}
+@keyframes avatarPulse{0%,100%{transform:scale(1);opacity:0.7;}50%{transform:scale(1.2);opacity:0;}}
+.avatar-online{position:absolute;bottom:-1px;right:-1px;width:18px;height:18px;background:var(--success);border-radius:50%;border:2px solid white;font-size:9px;display:flex;align-items:center;justify-content:center;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(88px + var(--safe-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:var(--night);color:#fff;padding:12px 20px;border-radius:100px;font-size:13px;font-weight:700;opacity:0;transition:all 0.3s;pointer-events:none;z-index:9998;white-space:nowrap;max-width:calc(100% - 40px);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── INSTALL BANNER ── */
+.install-banner{position:fixed;top:calc(var(--safe-top) + 8px);left:8px;right:8px;background:var(--night);border-radius:16px;padding:12px 16px;display:none;z-index:999;align-items:center;gap:12px;box-shadow:var(--shadow);}
+.install-banner.show{display:flex;}
+.install-banner p{flex:1;font-size:13px;color:#fff;}
+.btn-install{padding:8px 16px;background:var(--ocean);border:none;border-radius:100px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'Outfit',sans-serif;}
+.btn-dismiss{background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;padding:0 4px;}
+
+/* ── BOOKING MODAL ── */
+.booking-modal{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-radius:28px 28px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,0.2);z-index:3000;display:none;padding-bottom:var(--safe-bottom);max-height:85vh;overflow-y:auto;}
+.booking-modal.show{display:block;animation:slideUp 0.35s ease;}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(100%);}to{transform:translateX(-50%) translateY(0);}}
+.booking-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 16px;}
+.booking-header{padding:0 20px 16px;display:flex;align-items:flex-start;gap:14px;border-bottom:1px solid var(--border);}
+.booking-emoji{font-size:44px;line-height:1;}
+.booking-header h3{font-size:18px;font-weight:800;color:var(--night);margin-bottom:3px;}
+.booking-header p{font-size:12px;color:var(--muted);}
+.booking-section{padding:16px 20px;border-bottom:1px solid var(--border);}
+.booking-section-title{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.date-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+.date-row::-webkit-scrollbar{display:none;}
+.date-btn{flex-shrink:0;background:var(--sand);border:2px solid transparent;border-radius:14px;padding:10px 14px;text-align:center;cursor:pointer;transition:all 0.2s;font-family:'Outfit',sans-serif;}
+.date-btn.sel{background:var(--ocean-light);border-color:var(--ocean);}
+.date-btn .db-day{font-size:10px;color:var(--muted);font-weight:600;}
+.date-btn .db-num{font-size:20px;font-weight:800;color:var(--night);}
+.time-row{display:flex;gap:8px;flex-wrap:wrap;}
+.time-btn{padding:9px 14px;background:var(--sand);border:2px solid transparent;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;color:var(--night);font-family:'Outfit',sans-serif;}
+.time-btn.sel{background:var(--ocean-light);border-color:var(--ocean);color:var(--ocean);}
+.booking-footer{padding:16px 20px;}
+.btn-confirm{width:100%;padding:17px;background:linear-gradient(135deg,var(--coral),#E87060);color:#fff;border:none;border-radius:100px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;box-shadow:0 8px 24px rgba(212,97,74,0.4);}
+.booking-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2999;display:none;}
+.booking-overlay.show{display:block;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ STATUS BAR ══ -->
+<div class="status-bar" id="statusBar"></div>
+
+<!-- ══ SPLASH ══ -->
+<div id="splash">
+  <div class="splash-day"></div>
+  <div class="splash-night"></div>
+  <div class="splash-stars"></div>
+  <div class="splash-content">
+    <div class="splash-icon">🏝️</div>
+    <div class="splash-title">Bermuda ePass</div>
+    <div class="splash-sub">Official Visitor Guide</div>
+    <div class="splash-time-badge" id="splashTimeBadge">🌅 Good Morning, Bermuda</div>
+    <div class="splash-geo" id="splashGeo">Detecting your location...</div>
+    <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+  </div>
+</div>
+
+<!-- ══ PAYWALL ══ -->
+<div class="paywall" id="paywall">
+  <div class="paywall-bg"></div>
+  <div class="paywall-content">
+    <div class="paywall-logo">🏝️</div>
+    <h1>Your Bermuda<br>Adventure Starts Here</h1>
+    <div class="paywall-sub">AI-powered island guide. Works offline. Made for cruise passengers & visitors.</div>
+    <div class="free-hour-box">
+      <div class="fh-title">⏱️ 1 Hour FREE</div>
+      <div class="fh-sub">Full access — no credit card needed. Cancel anytime after your free hour.</div>
+    </div>
+    <div class="paywall-or">— or unlock all day —</div>
+    <div class="price-box">
+      <div class="amount">$2.00</div>
+      <div class="price-info">
+        <div class="label">Full Day Pass</div>
+        <div class="detail">One-time · Works offline · No subscription</div>
+      </div>
+    </div>
+    <ul class="paywall-features">
+      <li>Pre-book mopeds, tours & restaurants</li>
+      <li>AI Guide Marcus — answers anything</li>
+      <li>Exclusive 20% vendor discounts</li>
+      <li>3-day itinerary planner</li>
+      <li>Offline photo memories gallery</li>
+      <li>HOT NOW live island pulse map</li>
+    </ul>
+    <button class="btn-free-trial" onclick="startFreeTrial()">🎉 Start My Free Hour</button>
+    <button class="btn-unlock" onclick="unlockPremium()">Unlock Full Day — $2.00</button>
+    <button class="btn-restore" onclick="restorePurchase()">Restore Purchase</button>
+    <div class="paywall-seal">🔒 Secured · Works offline · Instant access</div>
+  </div>
+</div>
+
+<!-- ══ WELCOME MODAL (geo-triggered) ══ -->
+<div id="welcomeModal">
+  <div class="welcome-box">
+    <div class="welcome-flag">🇧🇲</div>
+    <h2>Welcome to Bermuda!</h2>
+    <p id="welcomeZone">We detected you're on the island. Here's your free hour starter pack.</p>
+    <div class="free-badge">
+      <div class="fb-title">⏱️ FREE 1-HOUR AI GUIDE</div>
+      <div class="fb-sub">Marcus answers anything. No card needed.</div>
+    </div>
+    <p class="stay-label">Where are you staying?</p>
+    <div id="stayGrid"></div>
+    <button class="btn-claim" onclick="claimFreeHour()">Claim My Free Hour →</button>
+    <button class="btn-skip-welcome" onclick="closeWelcome()">Maybe later</button>
+  </div>
+</div>
+
+<!-- ══ TRIAL EXPIRED MODAL ══ -->
+<div id="trialExpiredModal">
+  <div class="trial-expired-box">
+    <div style="font-size:44px;margin-bottom:10px;">⏱️</div>
+    <h2>Your Free Hour is Up!</h2>
+    <p>Hope you loved exploring Bermuda with Marcus. Unlock the full day pass to keep going.</p>
+    <div class="trial-timer" id="trialTimerLabel"></div>
+    <button class="btn-unlock" onclick="unlockPremium()" style="width:100%;margin-bottom:10px;">Unlock Full Day — $2.00</button>
+    <button class="btn-restore" onclick="restorePurchase()">Restore Purchase</button>
+  </div>
+</div>
+
+<!-- ══ SCREENS ══ -->
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+
+  <!-- DAY/NIGHT HERO -->
+  <div class="hero" id="mainHero">
+    <div class="hero-scene hero-day">
+      <div class="hero-day-overlay"></div>
+    </div>
+    <div class="hero-scene hero-night">
+      <div class="hero-night-overlay"></div>
+    </div>
+    <div class="neon-lights">
+      <div class="neon-streak s1"></div>
+      <div class="neon-streak s2"></div>
+      <div class="neon-streak s3"></div>
+    </div>
+    <div class="weather-chip">
+      <span class="temp" id="heroTemp">82°</span>
+      <div class="cond" id="heroCond">SUNNY</div>
+    </div>
+    <div class="hero-content">
+      <div class="scene-badge" id="sceneBadge">
+        <span id="sceneText">🌅 Pink Sand Morning</span>
+      </div>
+      <div class="hero-title" id="heroTitle">Horseshoe Bay<br>Awaits You 🏖️</div>
+      <div class="hero-sub" id="heroSub">World-famous pink sand — 5 min by moped</div>
+    </div>
+  </div>
+
+  <!-- SHIP BANNER -->
+  <div class="ship-banner" id="shipBanner">
+    <span class="ship-name">🚢 Norwegian Gem — Royal Naval Dockyard</span>
+    <span class="countdown-pill" id="dockTimer">Loading...</span>
+  </div>
+
+  <!-- URGENCY BAR -->
+  <div class="urgency-bar">
+    <span>⚡ Only 8 moped rentals left today!</span>
+    <button onclick="openBooking('Moped Rental','🛵','Explore the island at your pace','$45',45)">Book Now</button>
+  </div>
+
+  <!-- LIVE TICKER -->
+  <div class="live-ticker">
+    <div class="ticker-scroll" id="tickerScroll"></div>
+  </div>
+
+  <!-- QUICK GRID -->
+  <div class="section" style="padding-bottom:8px;">
+    <div class="quick-grid" id="quickGrid"></div>
+  </div>
+
+  <!-- DAY: BEACHES & ATTRACTIONS -->
+  <div id="dayContent">
+    <div class="section" style="padding-top:4px;">
+      <div class="section-header">
+        <div class="section-title">🏖️ Top Beaches</div>
+        <div class="section-link" onclick="goScreen('explore')">See all</div>
+      </div>
+    </div>
+    <div class="card-scroll">
+      <div class="place-card" onclick="openBooking('Horseshoe Bay Tour','🏖️','Famous pink sand beach access & guide','$35',35)">
+        <img class="place-img" src="horseshoe-beach.jpg" alt="Horseshoe Bay" onerror="this.style.background='linear-gradient(135deg,#4ABFDF,#FFB8C0)';this.style.display='block';">
+        <div class="place-info">
+          <div class="place-name">Horseshoe Bay</div>
+          <div class="place-type">Pink Sand Beach</div>
+          <div class="place-badge">⭐ 4.9 · 20% off</div>
+        </div>
+      </div>
+      <div class="place-card" onclick="openBooking('Tobacco Bay Snorkel','🤿','Snorkeling in crystal clear water','$55',55)">
+        <img class="place-img" src="beaches.jpg" alt="Tobacco Bay" onerror="this.style.background='linear-gradient(135deg,#1A9BBF,#4ABFDF)';">
+        <div class="place-info">
+          <div class="place-name">Tobacco Bay</div>
+          <div class="place-type">Snorkel Hotspot</div>
+          <div class="place-badge">🤿 Snorkel gear included</div>
+        </div>
+      </div>
+      <div class="place-card" onclick="openBooking('Crystal Caves Tour','🦎','UNESCO cave formations tour','$22',22)">
+        <img class="place-img" src="attractions.jpg" alt="Crystal Caves" onerror="this.style.background='linear-gradient(135deg,#064C6A,#0A6E8A)';">
+        <div class="place-info">
+          <div class="place-name">Crystal Caves</div>
+          <div class="place-type">UNESCO Attraction</div>
+          <div class="place-badge">🏆 Must-see</div>
+        </div>
+      </div>
+      <div class="place-card" onclick="openBooking('St. George Walking Tour','🏰','UNESCO World Heritage Town','$18',18)">
+        <img class="place-img" src="restaurants.jpg" alt="St. George" onerror="this.style.background='linear-gradient(135deg,#C9A84C,#E8A020)';">
+        <div class="place-info">
+          <div class="place-name">St. George's</div>
+          <div class="place-type">UNESCO Old Town</div>
+          <div class="place-badge">🎖️ World Heritage</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PACKAGES -->
+    <div class="section" style="padding-top:20px;">
+      <div class="section-header">
+        <div class="section-title">🎫 Top Packages</div>
+        <div class="section-link">View all</div>
+      </div>
+      <div class="packages-section" style="padding:0;">
+        <div class="package-card" onclick="openBooking('Bermuda Essentials','🇧🇲','Moped · Horseshoe Bay · Local Lunch · 20% discounts','$149',149)">
+          <div class="pkg-img">
+            <img src="horseshoe-beach.jpg" alt="Essentials" onerror="this.parentElement.style.background='linear-gradient(135deg,#1A7FB5,#4ABFDF)';">
+            <div class="pkg-badge save">SAVE $46</div>
+          </div>
+          <div class="pkg-info">
+            <h4>Bermuda Essentials</h4>
+            <div class="pkg-includes">🛵 Moped · 🏖️ Beach · 🍽️ Lunch</div>
+            <div class="pkg-price-row">
+              <div class="pkg-price">$149</div>
+              <div class="pkg-orig">$195</div>
+              <div class="pkg-save-pill">SAVE 24%</div>
+              <button class="btn-book">Book</button>
+            </div>
+          </div>
+        </div>
+        <div class="package-card" onclick="openBooking('Island Adventure','🏴‍☠️','Moped · Caves · History Tour · St. George','$189',189)">
+          <div class="pkg-img" style="background:linear-gradient(135deg,var(--coral),#E87060);">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;">🏴‍☠️</div>
+            <div class="pkg-badge hot">HOT</div>
+          </div>
+          <div class="pkg-info">
+            <h4>Island Adventure</h4>
+            <div class="pkg-includes">🛵 Moped · 🦎 Caves · 🏰 History</div>
+            <div class="pkg-price-row">
+              <div class="pkg-price">$189</div>
+              <div class="pkg-orig">$245</div>
+              <div class="pkg-save-pill">SAVE 23%</div>
+              <button class="btn-book">Book</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NIGHT: FRONT STREET NIGHTLIFE -->
+  <div id="nightContent" style="display:none;">
+    <div class="section" style="padding-top:16px;padding-bottom:8px;">
+      <div class="section-header">
+        <div class="section-title" style="color:var(--night);">🌃 Front Street Tonight</div>
+        <div class="section-link">See all</div>
+      </div>
+    </div>
+    <div class="card-scroll">
+      <div class="night-card" onclick="openBooking('Swizzle Inn','🍹','The oldest pub in Bermuda — Rum Swizzles','$0 cover',0)">
+        <div class="night-card-img">🍹</div>
+        <div class="night-card-info">
+          <div class="nc-name">Swizzle Inn</div>
+          <div class="nc-type">Classic Rum Bar</div>
+          <div class="nc-vibe">Lively · Locals + tourists</div>
+          <div class="nc-badge">🔥 HOT TONIGHT</div>
+        </div>
+      </div>
+      <div class="night-card" onclick="openBooking('The Loft','🎵','Rooftop bar with live music &amp; harbour views','$15 cover',15)">
+        <div class="night-card-img">🎵</div>
+        <div class="night-card-info">
+          <div class="nc-name">The Loft</div>
+          <div class="nc-type">Rooftop Lounge</div>
+          <div class="nc-vibe">Live music · Harbour views</div>
+          <div class="nc-badge">🎶 LIVE MUSIC</div>
+        </div>
+      </div>
+      <div class="night-card" onclick="openBooking('Barracuda Grill','🦈','Premier waterfront dining on Front Street','Reserve ahead',0)">
+        <div class="night-card-img">🦈</div>
+        <div class="night-card-info">
+          <div class="nc-name">Barracuda Grill</div>
+          <div class="nc-type">Fine Dining</div>
+          <div class="nc-vibe">Seafood · Waterfront</div>
+          <div class="nc-badge">⭐ TOP RATED</div>
+        </div>
+      </div>
+      <div class="night-card" onclick="openBooking('Docksiders','🌊','Harbour-side bar with sunset views','No cover',0)">
+        <div class="night-card-img">🌊</div>
+        <div class="night-card-info">
+          <div class="nc-name">Docksiders</div>
+          <div class="nc-type">Harbour Bar</div>
+          <div class="nc-vibe">Casual · Sunset views</div>
+          <div class="nc-badge">🌅 SUNSET BAR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NIGHT PACKAGES -->
+    <div class="section" style="padding-top:20px;">
+      <div class="section-header">
+        <div class="section-title">🍾 Night Out Packages</div>
+      </div>
+      <div class="package-card" onclick="openBooking('Front Street Night Tour','🌃','Guided bar crawl + dinner reservation on Front Street','$89',89)">
+        <div class="pkg-img" style="background:linear-gradient(135deg,#0A1628,#2A0A20);">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:64px;">🌃</div>
+          <div class="pkg-badge night">TONIGHT</div>
+        </div>
+        <div class="pkg-info">
+          <h4>Front Street Night Tour</h4>
+          <div class="pkg-includes">🍹 Rum tasting · 🍽️ Dinner · 🎵 Live music stop</div>
+          <div class="pkg-price-row">
+            <div class="pkg-price">$89</div>
+            <div class="pkg-orig">$120</div>
+            <div class="pkg-save-pill">SAVE 26%</div>
+            <button class="btn-book">Book</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RUM CULTURE (always visible) -->
+  <div class="rum-card">
+    <h3>🥃 Bermuda Rum Culture</h3>
+    <p>The Dark 'n' Stormy is Bermuda's national drink. Gosling's Black Seal rum + ginger beer = pure island magic.</p>
+    <div class="rum-drinks">
+      <div class="rum-drink">
+        <div class="rd-icon">⚫</div>
+        <div><div class="rd-name">Dark 'n' Stormy</div><div class="rd-desc">Gosling's + Ginger Beer</div></div>
+        <div class="rd-price">$12</div>
+      </div>
+      <div class="rum-drink">
+        <div class="rd-icon">🌀</div>
+        <div><div class="rd-name">Rum Swizzle</div><div class="rd-desc">Bermuda's Original Cocktail</div></div>
+        <div class="rd-price">$14</div>
+      </div>
+      <div class="rum-drink">
+        <div class="rd-icon">🍊</div>
+        <div><div class="rd-name">Rum Punch</div><div class="rd-desc">Tropical & Refreshing</div></div>
+        <div class="rd-price">$11</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOT NOW SECTION -->
+  <div class="hotnow-section">
+    <div class="hotnow-header">
+      <h3>🔥 HOT NOW in Bermuda</h3>
+      <span class="live-pill">LIVE</span>
+    </div>
+    <p style="padding:0 16px 10px;font-size:11px;color:var(--muted);">Live island pulse · Updated by the hour</p>
+    <div id="hotspot-map"></div>
+    <div id="hotspotList"></div>
+  </div>
+
+  <!-- EMPIRE NETWORK -->
+  <div class="empire-section">
+    <div class="empire-label">The Empire Network</div>
+    <a href="https://bermudaobserver.com" target="_blank" class="empire-link">
+      <span class="el-icon">📰</span>
+      <span class="el-text">Bermuda Observer — Island News</span>
+      <span class="el-arrow">›</span>
+    </a>
+    <a href="https://bermudalocals.com" target="_blank" class="empire-link">
+      <span class="el-icon">🛍️</span>
+      <span class="el-text">Bermuda Locals — Shop Small Businesses</span>
+      <span class="el-arrow">›</span>
+    </a>
+    <a href="https://nvme.live" target="_blank" class="empire-link">
+      <span class="el-icon">🎬</span>
+      <span class="el-text">NVME.LIVE — Share Your Bermuda Clips</span>
+      <span class="el-arrow">›</span>
+    </a>
+  </div>
+
+  <div style="height:24px;"></div>
+</div><!-- /screen-home -->
+
+<!-- EXPLORE -->
+<div class="screen" id="screen-explore">
+  <div style="background:var(--night);padding:calc(var(--safe-top)+16px) 16px 14px;flex-shrink:0;">
+    <div style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;margin-bottom:3px;">Explore Bermuda</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.5);">Find beaches, restaurants, attractions</div>
+  </div>
+  <div class="explore-filter" id="exploreFilter">
+    <button class="filter-btn active" onclick="setFilter(this,'all')">All</button>
+    <button class="filter-btn" onclick="setFilter(this,'beach')">🏖️ Beaches</button>
+    <button class="filter-btn" onclick="setFilter(this,'food')">🍽️ Restaurants</button>
+    <button class="filter-btn" onclick="setFilter(this,'bar')">🍹 Bars</button>
+    <button class="filter-btn" onclick="setFilter(this,'attraction')">🏰 Attractions</button>
+    <button class="filter-btn" onclick="setFilter(this,'tour')">🛵 Tours</button>
+  </div>
+  <div id="explore-map"></div>
+  <div class="place-list" id="placeList">
+    <div class="place-row" onclick="openBooking('Horseshoe Bay','🏖️','Pink sand &amp; turquoise waters','FREE',0)">
+      <img class="place-row-img" src="horseshoe-beach.jpg" alt="" onerror="this.style.background='linear-gradient(135deg,#4ABFDF,#FFB8C0)';">
+      <div class="place-row-info">
+        <div class="place-row-name">Horseshoe Bay Beach</div>
+        <div class="place-row-type">Beach</div>
+        <div class="place-row-desc">World-famous pink sand and turquoise water</div>
+        <div class="place-row-tag">⭐ 4.9 · Free access</div>
+      </div>
+    </div>
+    <div class="place-row" onclick="openBooking('Wahoo\'s Restaurant','🦈','Fresh local seafood on the water','$45 avg',45)">
+      <img class="place-row-img" src="restaurants.jpg" alt="" onerror="this.style.background='linear-gradient(135deg,#E8A020,#C87010)';">
+      <div class="place-row-info">
+        <div class="place-row-name">Wahoo's Restaurant</div>
+        <div class="place-row-type">Seafood · Restaurant</div>
+        <div class="place-row-desc">Award-winning fish chowder &amp; fresh catch daily</div>
+        <div class="place-row-tag">🏆 Best fish chowder</div>
+      </div>
+    </div>
+    <div class="place-row" onclick="openBooking('Crystal Caves','🦎','UNESCO cave formations','$22',22)">
+      <img class="place-row-img" src="attractions.jpg" alt="" onerror="this.style.background='linear-gradient(135deg,#064C6A,#0A6E8A)';">
+      <div class="place-row-info">
+        <div class="place-row-name">Crystal Caves</div>
+        <div class="place-row-type">Attraction</div>
+        <div class="place-row-desc">Stunning stalactite formations &amp; underground lake</div>
+        <div class="place-row-tag">🏅 UNESCO site</div>
+      </div>
+    </div>
+    <div class="place-row" onclick="openBooking('Swizzle Inn','🍹','Oldest pub in Bermuda','$12 avg',12)">
+      <img class="place-row-img" src="beaches.jpg" alt="" onerror="this.style.background='linear-gradient(135deg,#1A3344,#2A0A20)';">
+      <div class="place-row-info">
+        <div class="place-row-name">Swizzle Inn</div>
+        <div class="place-row-type">Bar · Rum Bar</div>
+        <div class="place-row-desc">Home of the original Bermuda Rum Swizzle since 1932</div>
+        <div class="place-row-tag">🍹 Must try</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLAN -->
+<div class="screen" id="screen-plan">
+  <div class="plan-header">
+    <h2>My Itinerary</h2>
+    <p>3-day island plan, curated for you</p>
+  </div>
+  <div class="day-tabs" id="dayTabs">
+    <button class="day-tab active" onclick="switchDay(this,1)">Day 1<br><small>Today</small></button>
+    <button class="day-tab" onclick="switchDay(this,2)">Day 2<br><small>Tomorrow</small></button>
+    <button class="day-tab" onclick="switchDay(this,3)">Day 3<br><small>Sat</small></button>
+  </div>
+  <div class="itinerary" id="itinerary"></div>
+  <button class="add-plan-btn" onclick="showToast('Tap a place on Explore to add to your plan')">+ Add Activity</button>
+  <div style="height:20px;"></div>
+</div>
+
+<!-- AI GUIDE -->
+<div class="screen" id="screen-chat">
+  <div class="chat-wrap">
+    <div class="chat-header">
+      <div class="chat-header-row">
+        <div class="marcus-avatar">🧙🏾</div>
+        <div>
+          <div class="ch-name">Marcus — AI Island Guide</div>
+          <div class="ch-status"><div class="online-dot"></div> Online · Knows all of Bermuda</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="suggest-chips" id="suggestChips">
+      <button class="chip" onclick="sendChip(this,'Best beach for today?')">Best beach?</button>
+      <button class="chip" onclick="sendChip(this,'What should I eat in Bermuda?')">Local food?</button>
+      <button class="chip" onclick="sendChip(this,'How do I get around the island?')">Getting around?</button>
+      <button class="chip" onclick="sendChip(this,'What time does my ship depart?')">Ship departs?</button>
+      <button class="chip" onclick="sendChip(this,'Give me a full day itinerary')">Full day plan</button>
+      <button class="chip" onclick="sendChip(this,'Where is the nightlife?')">Nightlife?</button>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" placeholder="Ask Marcus anything..." onkeypress="if(event.key==='Enter')sendMsg()">
+      <button class="btn-send" onclick="sendMsg()">✈️</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTOS -->
+<div class="screen" id="screen-photos">
+  <div class="photos-header">
+    <h2>📸 Bermuda Memories</h2>
+    <p>Your personal island photo album</p>
+  </div>
+  <div class="photo-grid" id="photoGrid"></div>
+  <div style="padding:16px;">
+    <button style="width:100%;padding:14px;border-radius:100px;border:2px dashed rgba(10,110,138,0.3);background:transparent;color:var(--ocean);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;" onclick="addPhoto()">+ Add Photo</button>
+  </div>
+</div>
+
+<!-- PASS -->
+<div class="screen" id="screen-pass">
+  <div class="pass-header">
+    <div class="pass-avatar">👤</div>
+    <div class="pass-name" id="passName">Visitor</div>
+    <div class="pass-sub" id="passSub">Bermuda ePass</div>
+    <div class="pass-tier-row">
+      <div class="pass-tier-badge" id="passTierBadge">🆓 Free Trial</div>
+      <div class="pass-time-left" id="passTimeLeft"></div>
+    </div>
+  </div>
+  <!-- ePass Card -->
+  <div class="epass-section" style="margin-top:16px;">
+    <div class="epass-card">
+      <div class="epass-bg">
+        <div class="epass-logo-row">
+          <span style="font-size:24px;">🏝️</span>
+          <span class="epass-brand">Bermuda ePass</span>
+        </div>
+        <div class="epass-name" id="epassName">Visitor</div>
+        <div class="epass-country">Bermuda · Atlantic</div>
+        <div class="epass-meta">
+          <div class="epass-meta-item"><label>Valid</label><span id="epassDate">Today</span></div>
+          <div class="epass-meta-item"><label>Tier</label><span id="epassTier">Free Trial</span></div>
+          <div class="epass-meta-item"><label>Discounts</label><span>20% off</span></div>
+        </div>
+        <div class="epass-qr" id="epassQR">SCAN<br>QR<br>CODE</div>
+        <div class="epass-tier trial-badge" id="epassTierBadge">⏱️ FREE TRIAL</div>
+      </div>
+    </div>
+  </div>
+  <button class="btn-upgrade" id="upgradeBtn" onclick="unlockPremium()">⭐ Upgrade to Full Day — $2.00</button>
+  <div class="settings-section">
+    <div class="settings-title">Settings</div>
+    <div class="settings-list">
+      <div class="settings-item" onclick="showToast('Notifications coming soon')">
+        <div class="settings-icon">🔔</div>
+        <div class="settings-text">Notifications</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="showToast('Offline mode is always on')">
+        <div class="settings-icon">📴</div>
+        <div class="settings-text">Offline Mode</div>
+        <div class="settings-arrow">On ›</div>
+      </div>
+      <div class="settings-item" onclick="clearAll()">
+        <div class="settings-icon">🗑️</div>
+        <div class="settings-text">Clear Data</div>
+        <div class="settings-arrow">›</div>
+      </div>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+</div>
+
+<!-- ══ BOTTOM NAV ══ -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="nav-home" onclick="goScreen('home')">
+    <div class="nav-icon">🏠</div><div class="nav-label">Home</div>
+  </button>
+  <button class="nav-item" id="nav-explore" onclick="goScreen('explore')">
+    <div class="nav-icon">🔍</div><div class="nav-label">Explore</div>
+  </button>
+  <button class="nav-item" id="nav-plan" onclick="goScreen('plan')">
+    <div class="nav-icon">📋</div><div class="nav-label">Plan</div>
+  </button>
+  <button class="nav-item" id="nav-chat" onclick="goScreen('chat')">
+    <div class="nav-icon">🤖</div><div class="nav-label">AI Guide</div>
+  </button>
+  <button class="nav-item" id="nav-pass" onclick="goScreen('pass')">
+    <div class="nav-icon">🎫</div><div class="nav-label">Pass</div>
+  </button>
+</div>
+
+</div><!-- /app -->
+
+<!-- ══ MARCUS AVATAR (floating) ══ -->
+<div class="avatar-guide" id="avatarGuide">
+  <div class="avatar-bubble" id="avatarBubble" style="display:none;">
+    <button class="avatar-bubble-close" onclick="hideAvatarBubble()">×</button>
+    <span id="avatarText"></span>
+  </div>
+  <button class="avatar-btn" id="avatarBtn" onclick="toggleAvatar()">
+    🧙🏾
+    <div class="avatar-online">✓</div>
+  </button>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ INSTALL BANNER ══ -->
+<div class="install-banner" id="installBanner">
+  <p>📲 Add Bermuda ePass to your home screen</p>
+  <button class="btn-install" id="installBtn">Install</button>
+  <button class="btn-dismiss" onclick="document.getElementById('installBanner').classList.remove('show')">×</button>
+</div>
+
+<!-- ══ BOOKING MODAL ══ -->
+<div class="booking-overlay" id="bookingOverlay" onclick="closeBooking()"></div>
+<div class="booking-modal" id="bookingModal">
+  <div class="booking-handle"></div>
+  <div class="booking-header">
+    <div class="booking-emoji" id="bookingEmoji">🏖️</div>
+    <div>
+      <h3 id="bookingName">Activity Name</h3>
+      <p id="bookingDesc">Description here</p>
+    </div>
+  </div>
+  <div class="booking-section">
+    <div class="booking-section-title">Select Date</div>
+    <div class="date-row" id="dateRow"></div>
+  </div>
+  <div class="booking-section">
+    <div class="booking-section-title">Select Time</div>
+    <div class="time-row">
+      <button class="time-btn" onclick="selTime(this)">9:00 AM</button>
+      <button class="time-btn" onclick="selTime(this)">10:00 AM</button>
+      <button class="time-btn" onclick="selTime(this)">11:30 AM</button>
+      <button class="time-btn" onclick="selTime(this)">1:00 PM</button>
+      <button class="time-btn" onclick="selTime(this)">2:30 PM</button>
+      <button class="time-btn" onclick="selTime(this)">4:00 PM</button>
+    </div>
+  </div>
+  <div class="booking-footer">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:13px;color:var(--muted);">Total</div>
+      <div style="font-size:26px;font-weight:800;color:var(--ocean);" id="bookingPrice">$35</div>
+    </div>
+    <button class="btn-confirm" onclick="confirmBooking()">Confirm Booking ✓</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+var state = JSON.parse(localStorage.getItem('epass_v4') || 'null') || {
+  plan: 'none',       // none | trial | premium
+  trialExpires: null,
+  trialStarted: null,
+  name: 'Visitor',
+  parish: '',
+  photos: {},
+  bookings: [],
+  seenWelcome: false,
+  geoZone: null
+};
+function saveState(){ localStorage.setItem('epass_v4', JSON.stringify(state)); }
+
+// ══════════════════════════════════════
+// BERMUDA TIME UTILS
+// ══════════════════════════════════════
+function bermudaHour(){
+  var now = new Date();
+  // Bermuda is UTC-3 (AST)
+  var utc = now.getTime() + now.getTimezoneOffset()*60000;
+  var bdt = new Date(utc - 3*3600000);
+  return bdt.getHours();
+}
+function isNightTime(){
+  var h = bermudaHour();
+  return h >= 18 || h < 6;
+}
+function isEvening(){
+  var h = bermudaHour();
+  return h >= 15;
+}
+
+// ══════════════════════════════════════
+// DAY/NIGHT SCENE ENGINE
+// ══════════════════════════════════════
+function applyDayNightTheme(){
+  var hero = document.getElementById('mainHero');
+  var splash = document.getElementById('splash');
+  var statusBar = document.getElementById('statusBar');
+  var sceneText = document.getElementById('sceneText');
+  var heroTitle = document.getElementById('heroTitle');
+  var heroSub = document.getElementById('heroSub');
+  var timeBadge = document.getElementById('splashTimeBadge');
+  var dayContent = document.getElementById('dayContent');
+  var nightContent = document.getElementById('nightContent');
+  var quickGrid = document.getElementById('quickGrid');
+  var h = bermudaHour();
+
+  if (isNightTime()) {
+    hero && hero.classList.add('night');
+    splash && splash.classList.add('night');
+    document.documentElement.setAttribute('data-time','night');
+    statusBar.style.background = '#0A1628';
+    if(sceneText) sceneText.textContent = '🌃 Front Street Nights';
+    if(heroTitle) heroTitle.innerHTML = 'Front Street<br>Is Alive Tonight 🌃';
+    if(heroSub) heroSub.textContent = 'Best bars, restaurants & live music';
+    if(timeBadge) timeBadge.textContent = '🌃 Good Evening, Bermuda';
+    if(dayContent) dayContent.style.display='none';
+    if(nightContent) nightContent.style.display='';
+    document.getElementById('heroTemp').textContent = '75°';
+    document.getElementById('heroCond').textContent = 'CLEAR';
+  } else if (h >= 6 && h < 12) {
+    if(sceneText) sceneText.textContent = '🌅 Pink Sand Morning';
+    if(heroTitle) heroTitle.innerHTML = 'Horseshoe Bay<br>Awaits You 🏖️';
+    if(heroSub) heroSub.textContent = 'World-famous pink sand — 5 min by moped';
+    if(timeBadge) timeBadge.textContent = '🌅 Good Morning, Bermuda';
+    statusBar.style.background = '#1A7FB5';
+    if(dayContent) dayContent.style.display='';
+    if(nightContent) nightContent.style.display='none';
+    document.getElementById('heroTemp').textContent = '82°';
+    document.getElementById('heroCond').textContent = 'SUNNY';
+  } else if (h >= 12 && h < 17) {
+    if(sceneText) sceneText.textContent = '☀️ Afternoon Adventure';
+    if(heroTitle) heroTitle.innerHTML = 'Crystal Caves &<br>St. George\'s 🏰';
+    if(heroSub) heroSub.textContent = 'Explore UNESCO heritage this afternoon';
+    if(timeBadge) timeBadge.textContent = '☀️ Good Afternoon, Bermuda';
+    statusBar.style.background = '#0A6E8A';
+    if(dayContent) dayContent.style.display='';
+    if(nightContent) nightContent.style.display='none';
+    document.getElementById('heroTemp').textContent = '84°';
+    document.getElementById('heroCond').textContent = 'SUNNY';
+  } else {
+    if(sceneText) sceneText.textContent = '🌇 Golden Hour';
+    if(heroTitle) heroTitle.innerHTML = 'Sunset Drinks<br>on the Water 🍹';
+    if(heroSub) heroSub.textContent = 'Docksiders & Swizzle Inn calling your name';
+    if(timeBadge) timeBadge.textContent = '🌇 Golden Hour, Bermuda';
+    statusBar.style.background = '#C9A84C';
+    if(dayContent) dayContent.style.display='';
+    if(nightContent) nightContent.style.display='none';
+    document.getElementById('heroTemp').textContent = '79°';
+    document.getElementById('heroCond').textContent = 'PARTLY CLOUDY';
+  }
+
+  // Quick grid buttons
+  if(quickGrid){
+    var btns = isNightTime() ? [
+      {icon:'🍹',label:'Bars',fn:"openBooking('Rum Bar Tour','🍹','Guided rum bar tour of Hamilton','$45',45)"},
+      {icon:'🎵',label:'Live Music',fn:"showToast('Live music at The Loft & Docksiders tonight!')"},
+      {icon:'🍽️',label:'Dinner',fn:"openBooking('Harbour Dinner','🍽️','Front Street waterfront dining reservation','$65',65)"},
+      {icon:'🗺️',label:'Night Map',fn:"goScreen('explore')"}
+    ] : [
+      {icon:'🛵',label:'Mopeds',fn:"openBooking('Moped Rental','🛵','Explore the island at your pace','$45',45)"},
+      {icon:'🤿',label:'Snorkel',fn:"openBooking('Snorkel Tour','🤿','Tobacco Bay guided snorkel','$55',55)"},
+      {icon:'📸',label:'Photos',fn:"goScreen('photos')"},
+      {icon:'🗺️',label:'Map',fn:"goScreen('explore')"}
+    ];
+    quickGrid.innerHTML = btns.map(function(b){
+      return '<button class="quick-btn" onclick="'+b.fn+'"><div class="qicon">'+b.icon+'</div><div class="qlabel">'+b.label+'</div></button>';
+    }).join('');
+  }
+}
+
+// ══════════════════════════════════════
+// LIVE TICKER
+// ══════════════════════════════════════
+function initTicker(){
+  var items = isNightTime() ? [
+    '🍹 Swizzle Inn happy hour until 8pm',
+    '🎵 Live reggae at The Loft tonight',
+    '🌃 Front Street comes alive after dark',
+    '🦞 Wahoo\'s restaurant open until 11pm',
+    '🎉 Night cruise returns at midnight'
+  ] : [
+    '🏖️ Horseshoe Bay — perfect conditions today',
+    '🛵 Moped rentals: only 8 left!',
+    '🦎 Crystal Caves tours every 30 min',
+    '⛵ Glass-bottom boat at 11am & 2pm',
+    '☀️ UV index high — sunscreen required'
+  ];
+  var el = document.getElementById('tickerScroll');
+  if(!el) return;
+  var doubled = items.concat(items);
+  el.innerHTML = doubled.map(function(i){ return '<span class="ticker-item">'+i+'</span>'; }).join('');
+}
+
+// ══════════════════════════════════════
+// HOT NOW HOTSPOT MAP
+// ══════════════════════════════════════
+var SPOTS = [
+  {name:'Horseshoe Bay',icon:'🏖️',lat:32.2572,lng:-64.8317,hot:[9,17],tag:'Pink sand — best before 4pm'},
+  {name:'Tobacco Bay',icon:'🤿',lat:32.3879,lng:-64.6769,hot:[10,16],tag:'Snorkel hotspot'},
+  {name:'Crystal Caves',icon:'🦎',lat:32.3470,lng:-64.7130,hot:[9,17],tag:'Tours every 30 min'},
+  {name:'Swizzle Inn',icon:'🍹',lat:32.3490,lng:-64.7090,hot:[16,23],tag:'Happy hour energy'},
+  {name:'Front Street Hamilton',icon:'🛍️',lat:32.2956,lng:-64.7820,hot:[10,22],tag:'Shops + harbour nights'},
+  {name:'St. George\'s Town',icon:'🏰',lat:32.3807,lng:-64.6778,hot:[9,18],tag:'UNESCO old town'},
+  {name:'Royal Naval Dockyard',icon:'🚢',lat:32.3165,lng:-64.8344,hot:[8,20],tag:'Cruise village + Clocktower'},
+  {name:'Warwick Long Bay',icon:'🌊',lat:32.2570,lng:-64.8150,hot:[9,17],tag:'Quiet pink sand'},
+  {name:'Elbow Beach',icon:'🌴',lat:32.2720,lng:-64.7760,hot:[9,17],tag:'Resort strip'},
+  {name:'Black Horse Tavern',icon:'🦞',lat:32.3611,lng:-64.6500,hot:[12,21],tag:'Fish chowder HQ'}
+];
+function initHotNow(){
+  var h = bermudaHour();
+  var live = SPOTS.map(function(sp){
+    return {sp:sp, on: h>=sp.hot[0] && h<sp.hot[1]};
+  });
+  // Chips
+  var el = document.getElementById('hotspotList');
+  if(el){
+    live.forEach(function(x){
+      var c = document.createElement('div');
+      c.className='hot-chip';
+      c.style.opacity = x.on?'1':'0.55';
+      c.innerHTML = '<div class="hc-name">'+x.sp.icon+' '+x.sp.name+'</div>'
+        +'<div class="hc-tag">'+x.sp.tag+'</div>'
+        +'<div class="hc-status" style="color:'+(x.on?'var(--urgent)':'var(--muted)')+'">'
+        +(x.on?'● HOT NOW':'○ Opens later')+'</div>';
+      c.onclick=function(){ showToast(x.sp.name+': '+(x.on?'🔥 HOT NOW':'opens at '+x.sp.hot[0]+':00')); };
+      el.appendChild(c);
+    });
+  }
+  // Map
+  if(typeof L !== 'undefined'){
+    try{
+      var m = L.map('hotspot-map',{zoomControl:false,attributionControl:false,scrollWheelZoom:false})
+               .setView([32.300,-64.770],11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(m);
+      live.forEach(function(x){
+        var ic = L.divIcon({
+          className: x.on?'hot-pin':'',
+          html:'<div style="font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">'+x.sp.icon+'</div>',
+          iconSize:[28,28],iconAnchor:[14,14]
+        });
+        L.marker([x.sp.lat,x.sp.lng],{icon:ic}).addTo(m)
+          .bindPopup('<strong>'+x.sp.name+'</strong><br><span style="font-size:11px;color:'+(x.on?'var(--urgent)':'var(--muted)')+';font-weight:700;">'+(x.on?'HOT NOW':'Opens later')+'</span><br><span style="font-size:11px;">'+x.sp.tag+'</span>');
+      });
+      m.on('focus',function(){m.scrollWheelZoom.enable();});
+      m.on('blur',function(){m.scrollWheelZoom.disable();});
+    }catch(e){ console.log('Map error:',e); }
+  }
+}
+
+// ══════════════════════════════════════
+// EXPLORE MAP
+// ══════════════════════════════════════
+var exploreMap = null;
+function initExploreMap(){
+  if(exploreMap || typeof L==='undefined') return;
+  try{
+    exploreMap = L.map('explore-map',{zoomControl:false,attributionControl:false,scrollWheelZoom:false})
+                  .setView([32.300,-64.770],11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(exploreMap);
+    SPOTS.forEach(function(sp){
+      var ic = L.divIcon({className:'',html:'<div style="font-size:20px;">'+sp.icon+'</div>',iconSize:[24,24],iconAnchor:[12,12]});
+      L.marker([sp.lat,sp.lng],{icon:ic}).addTo(exploreMap)
+        .bindPopup('<strong>'+sp.name+'</strong><br><span style="font-size:11px;">'+sp.tag+'</span>');
+    });
+    exploreMap.on('focus',function(){exploreMap.scrollWheelZoom.enable();});
+    exploreMap.on('blur',function(){exploreMap.scrollWheelZoom.disable();});
+  }catch(e){}
+}
+
+// ══════════════════════════════════════
+// GEO DETECTION
+// ══════════════════════════════════════
+var BERMUDA_BOUNDS = {minLat:32.23,maxLat:32.40,minLng:-64.90,maxLng:-64.60};
+function detectGeo(){
+  if(!navigator.geolocation){ onGeoResult(null); return; }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      var lat=pos.coords.latitude, lng=pos.coords.longitude;
+      var inBermuda = lat>=BERMUDA_BOUNDS.minLat && lat<=BERMUDA_BOUNDS.maxLat &&
+                      lng>=BERMUDA_BOUNDS.minLng && lng<=BERMUDA_BOUNDS.maxLng;
+      if(!inBermuda){ onGeoResult(null); return; }
+      var zone='general';
+      // L.F. Wade Airport: 32.3640, -64.6788
+      if(Math.abs(lat-32.364)<0.01 && Math.abs(lng+64.679)<0.01) zone='airport';
+      // Royal Naval Dockyard: 32.3165, -64.8344
+      else if(Math.abs(lat-32.317)<0.02 && Math.abs(lng+64.834)<0.02) zone='dockyard';
+      // Hamilton: 32.296, -64.782
+      else if(Math.abs(lat-32.296)<0.02 && Math.abs(lng+64.782)<0.02) zone='hamilton';
+      state.geoZone = zone;
+      saveState();
+      onGeoResult({inBermuda:true, zone:zone});
+    },
+    function(){ onGeoResult(null); },
+    {timeout:2.00, maximumAge:60000}
+  );
+}
+function onGeoResult(data){
+  var geoEl = document.getElementById('splashGeo');
+  if(!data || !data.inBermuda){
+    if(geoEl) geoEl.textContent = '📍 Welcome — your guide is ready!';
+    return;
+  }
+  var msgs = {
+    airport:'✈️ Just landed at L.F. Wade — welcome to paradise!',
+    dockyard:'🚢 Welcome ashore! Cruise ship detected.',
+    hamilton:'🏙️ You are in Hamilton — the heart of the island.',
+    general:'🌺 You are on the island — let\'s explore!'
+  };
+  if(geoEl) geoEl.textContent = msgs[data.zone] || msgs.general;
+  // Show welcome modal after a short delay if not seen
+  if(!state.seenWelcome && state.plan === 'none'){
+    setTimeout(function(){
+      showWelcomeModal(data.zone);
+    }, 1000);
+  }
+}
+
+// ══════════════════════════════════════
+// WELCOME MODAL
+// ══════════════════════════════════════
+var PARISHES = ['St. George\'s','Hamilton Parish','Smith\'s','Devonshire','Pembroke (Hamilton)','Paget','Warwick','Southampton','Sandys (Dockyard)'];
+function buildParishGrid(){
+  var g = document.getElementById('stayGrid');
+  if(!g) return;
+  PARISHES.forEach(function(p){
+    var d = document.createElement('div');
+    d.className='stay-chip';
+    d.textContent=p;
+    d.onclick=function(){
+      document.querySelectorAll('.stay-chip').forEach(function(x){x.classList.remove('sel');});
+      d.classList.add('sel');
+      state.parish=p;
+      saveState();
+    };
+    g.appendChild(d);
+  });
+}
+function showWelcomeModal(zone){
+  var modal = document.getElementById('welcomeModal');
+  var zoneEl = document.getElementById('welcomeZone');
+  if(!modal) return;
+  var msgs = {
+    airport:'Just landed at L.F. Wade? Welcome home-away-from-home! 🏝️',
+    dockyard:'Welcome ashore! Your ship day starts now — Marcus will guide you 🚢',
+    hamilton:'You are in Hamilton — the heart of Bermuda. Marcus knows every street 🏙️',
+    general:'We see you\'re on the island. Here\'s your free hour starter pack! 🌺'
+  };
+  if(zoneEl) zoneEl.textContent = msgs[zone] || msgs.general;
+  modal.classList.add('show');
+}
+function claimFreeHour(){
+  fetch('/api/trial/free',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({parish:state.parish})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d && d.ok && d.exp){
+        state.plan='trial'; state.trialExpires=d.exp; state.trialStarted=Date.now();
+        saveState(); closeWelcome(); renderPassBadge();
+        showToast('✅ Free hour active! Ask Marcus anything.');
+        showAvatar(getMarcusGreeting());
+      } else { startFreeTrial(); }
+    })
+    .catch(function(){ startFreeTrial(); });
+}
+function closeWelcome(){
+  var m = document.getElementById('welcomeModal');
+  if(m) m.classList.remove('show');
+  state.seenWelcome=true; saveState();
+}
+
+// ══════════════════════════════════════
+// TRIAL / ACCESS CONTROL
+// ══════════════════════════════════════
+function hasAccess(){
+  if(state.plan==='premium') return true;
+  if(state.plan==='trial' && state.trialExpires && Date.now()<state.trialExpires) return true;
+  return false;
+}
+function startFreeTrial(){
+  state.plan='trial';
+  state.trialExpires = Date.now() + 60*60*1000;
+  state.trialStarted = Date.now();
+  saveState();
+  document.getElementById('paywall').classList.add('hidden');
+  closeWelcome();
+  renderPassBadge();
+  showAvatar(getMarcusGreeting());
+  showToast('🎉 Free hour started! Enjoy Bermuda!');
+  startTrialCountdown();
+  setTimeout(subscribeToPush, 2000);
+}
+function unlockPremium(){
+  showToast('💳 Opening PayPal checkout...');
+  fetch('/api/paypal/create-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:'2.00',description:'Bermuda ePass Full Day Pass'})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok && d.approveUrl){ window.location.href=d.approveUrl; }
+      else { showToast('Payment error. Please try again.'); console.error('PayPal error:',d); }
+    })
+    .catch(function(e){ showToast('Network error. Try again.'); console.error(e); });
+}
+function restorePurchase(){
+  showToast('Checking your purchase...');
+  setTimeout(function(){ showToast('No purchase found. Try unlocking again.'); }, 1500);
+}
+function startTrialCountdown(){
+  if(!state.trialExpires) return;
+  var iv = setInterval(function(){
+    if(!state.trialExpires){ clearInterval(iv); return; }
+    var left = state.trialExpires - Date.now();
+    if(left<=0){
+      clearInterval(iv);
+      state.plan='none'; saveState();
+      document.getElementById('trialExpiredModal').classList.add('show');
+      renderPassBadge();
+    }
+    // Update pass screen timer
+    var el = document.getElementById('passTimeLeft');
+    if(el && left>0){
+      var m=Math.floor(left/60000), s=Math.floor((left%60000)/1000);
+      el.textContent = m+'m '+s+'s left';
+    }
+  }, 1000);
+}
+function renderPassBadge(){
+  var badge = document.getElementById('passTierBadge');
+  var epassTier = document.getElementById('epassTier');
+  var epassTierBadge = document.getElementById('epassTierBadge');
+  var upgradeBtn = document.getElementById('upgradeBtn');
+  if(state.plan==='premium'){
+    if(badge) badge.innerHTML='⭐ Premium';
+    if(epassTier) epassTier.textContent='Premium';
+    if(epassTierBadge){ epassTierBadge.textContent='⭐ PREMIUM'; epassTierBadge.className='epass-tier premium-badge'; }
+    if(upgradeBtn) upgradeBtn.style.display='none';
+  } else if(state.plan==='trial'){
+    if(badge) badge.innerHTML='⏱️ Free Trial';
+    if(epassTier) epassTier.textContent='Free Trial';
+    if(epassTierBadge){ epassTierBadge.textContent='⏱️ FREE TRIAL'; epassTierBadge.className='epass-tier trial-badge'; }
+    if(upgradeBtn) upgradeBtn.style.display='';
+  } else {
+    if(badge) badge.innerHTML='🆓 Free';
+    if(upgradeBtn) upgradeBtn.style.display='';
+  }
+  var d = new Date();
+  var el = document.getElementById('epassDate');
+  if(el) el.textContent = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  var nameEl = document.getElementById('epassName');
+  var passNameEl = document.getElementById('passName');
+  if(nameEl) nameEl.textContent = state.name;
+  if(passNameEl) passNameEl.textContent = state.name;
+}
+
+// ══════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════
+var screenOrder = ['home','explore','plan','chat','photos','pass'];
+function goScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  var sc = document.getElementById('screen-'+id);
+  if(sc){ sc.classList.add('active'); sc.scrollTop=0; }
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var nav = document.getElementById('nav-'+id);
+  if(nav) nav.classList.add('active');
+  if(id==='explore') setTimeout(initExploreMap, 100);
+  if(id==='chat') initChatIfEmpty();
+  // Show avatar on home, chat
+  var ag = document.getElementById('avatarGuide');
+  if(ag) ag.classList.toggle('show', id==='home' || id==='chat');
+}
+
+// ══════════════════════════════════════
+// ITINERARY
+// ══════════════════════════════════════
+var ITINERARIES = {
+  1: [
+    {time:'9:00 AM',name:'Horseshoe Bay Beach',desc:'World-famous pink sand & turquoise water'},
+    {time:'11:30 AM',name:'Moped Ride to St. George\'s',desc:'30 min scenic coastal ride'},
+    {time:'1:00 PM',name:'Lunch at Wahoo\'s',desc:'Fresh local fish chowder & catch of day'},
+    {time:'2:30 PM',name:'Crystal Caves Tour',desc:'UNESCO formations, tours every 30 min'},
+    {time:'4:30 PM',name:'Front Street Shopping',desc:'Pick up Gosling\'s & local souvenirs'},
+    {time:'7:00 PM',name:'Swizzle Inn for Sunset',desc:'Dark \'n\' Stormy cocktails & local vibes'}
+  ],
+  2: [
+    {time:'9:00 AM',name:'Royal Naval Dockyard',desc:'Maritime museum, artisan village & café'},
+    {time:'11:00 AM',name:'Tobacco Bay Snorkel',desc:'Crystal clear water, gear included'},
+    {time:'1:00 PM',name:'St. George\'s Old Town',desc:'Walk the UNESCO Heritage streets'},
+    {time:'3:00 PM',name:'Elbow Beach',desc:'Quiet stretch of pink sand & calm water'},
+    {time:'6:00 PM',name:'Harbour Dinner at Barracuda',desc:'Waterfront fine dining reservation'}
+  ],
+  3: [
+    {time:'8:30 AM',name:'Morning Moped Tour',desc:'Sunrise loop: South Shore → North Shore'},
+    {time:'10:30 AM',name:'Warwick Long Bay',desc:'Uncrowded pink sand, bring a picnic'},
+    {time:'12:30 PM',name:'Black Horse Tavern',desc:'Authentic fish chowder in St. David\'s'},
+    {time:'2:30 PM',name:'Lighthouse Hike',desc:'Gibbs Hill Lighthouse panoramic views'},
+    {time:'2.00 PM',name:'Final Front Street Walk',desc:'Last souvenir run & cocktails at sunset'}
+  ]
+};
+var currentDay=1;
+function renderItinerary(day){
+  var el = document.getElementById('itinerary');
+  if(!el) return;
+  var items = ITINERARIES[day] || [];
+  el.innerHTML = items.map(function(item){
+    return '<div class="itinerary-item">'
+      +'<div class="itinerary-time">'+item.time+'</div>'
+      +'<div class="itinerary-dot"></div>'
+      +'<div class="itinerary-content"><div class="ic-name">'+item.name+'</div><div class="ic-desc">'+item.desc+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+function switchDay(el, day){
+  document.querySelectorAll('.day-tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  currentDay=day; renderItinerary(day);
+}
+
+// ══════════════════════════════════════
+// AI MARCUS
+// ══════════════════════════════════════
+var MARCUS_QA = {
+  'best beach':"🏖️ Horseshoe Bay is Bermuda's crown jewel — pink sand, turquoise water, and those cliffs! Go early (before 11am) to beat the crowds. Tobacco Bay is my pick for snorkeling.",
+  'beach':"🌊 Bermuda has 7 stunning beaches! Top picks: Horseshoe Bay (most famous), Warwick Long Bay (quietest), Tobacco Bay (snorkeling). They all have that magical pink sand.",
+  'food':"🍽️ You MUST try: 1) Fish chowder (Black Horse Tavern is the best) 2) The Dark 'n' Stormy cocktail 3) Fish sandwich from Art Mel's 4) Wahoo at Wahoo's restaurant. Bermuda cuisine is Caribbean-meets-British!",
+  'eat':"🍽️ Top eats: Fish chowder, fish sandwich from Art Mel's, wahoo fish at any seafood spot, Portuguese cuisine (big local community), and definitely a Rum Swizzle at the Swizzle Inn!",
+  'moped':"🛵 Mopeds are THE way to get around! Rentals from $45-65/day. You need a valid driving license. Speed limit is 35km/h. Roads are narrow but gorgeous. Start at the Dockyard and ride the South Shore!",
+  'getting around':"🚌 Options: 1) Moped (best!) - $45/day 2) Taxis (pricey but easy) 3) Bus & Ferry - $5/trip with BHW pass 4) Electric bikes - $35/day. The ferry from Dockyard to Hamilton is only 20 min — beautiful ride!",
+  'ship':"🚢 Most ships dock at the Royal Naval Dockyard in Sandy's Parish. Return times vary by ship — check your cruise app! The ferry to Hamilton runs every 30 min and takes ~20 min.",
+  'nightlife':"🌃 Hamilton's Front Street is the spot! My picks: The Loft (rooftop, live music), Docksiders (harbour views), Flanagan's Irish Pub (lively!), Swizzle Inn (legendary rum bar). Things get going after 8pm.",
+  'caves':"🦎 Crystal Caves and Fantasy Caves are absolutely stunning — stalactites hanging over an underground lake. Tours run every 30 min. Allow 45 min. Book ahead, they sell out!",
+  'rum':"🥃 Gosling's Black Seal Rum is Bermuda's most famous export. The Dark 'n' Stormy (Gosling's + ginger beer) is the national drink. Visit the Swizzle Inn for the original Bermuda Rum Swizzle — it's legendary!",
+  'itinerary':"📋 Perfect 1-day plan: 9am Horseshoe Bay → 11:30am ride to St George's → 1pm lunch at Wahoo's → 2:30pm Crystal Caves → 5pm Front Street shopping → 7pm Swizzle Inn! Go to Plan tab for your full 3-day schedule.",
+  'plan':"📋 Head to the Plan tab for your full curated itinerary! I've planned Day 1 (beaches), Day 2 (culture), and Day 3 (off the beaten path). Want me to customize it?",
+  'default':"🤔 Great question! I'm Marcus, your Bermuda AI guide. I know every beach, restaurant, bar, and hidden gem on the island. Ask me about beaches, food, getting around, nightlife, or anything Bermuda!"
+};
+function getMarcusGreeting(){
+  var h = bermudaHour();
+  var zone = state.geoZone;
+  if(zone==='dockyard') return '🚢 Welcome ashore! I\'m Marcus, your island guide. Today you\'re at the Royal Naval Dockyard — take the ferry to Hamilton in 20 min!';
+  if(zone==='airport') return '✈️ Welcome to Bermuda! I\'m Marcus. First tip: grab a taxi or bus to your hotel, then call me anytime for island advice!';
+  if(h>=6 && h<12) return '☀️ Good morning! I\'m Marcus, your Bermuda AI guide. Horseshoe Bay is calling your name — want a moped? 🛵';
+  if(h>=12 && h<17) return '🌞 Good afternoon! I\'m Marcus. Beaches or caves this afternoon? I know all the best spots!';
+  if(h>=17 && h<20) return '🌇 Golden hour in Bermuda! I\'m Marcus. Sunset drinks at Docksiders? Or a harbour dinner? I\'ll hook you up!';
+  return '🌃 Good evening! I\'m Marcus. Front Street is alive tonight — want the inside scoop on Bermuda nightlife? 🍹';
+}
+function initChatIfEmpty(){
+  var msgs = document.getElementById('chatMessages');
+  if(!msgs || msgs.children.length>0) return;
+  addAiMsg(getMarcusGreeting());
+}
+function addAiMsg(text){
+  var msgs = document.getElementById('chatMessages');
+  if(!msgs) return;
+  var typing = document.createElement('div');
+  typing.className='msg typing';
+  typing.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  msgs.appendChild(typing);
+  msgs.scrollTop=msgs.scrollHeight;
+  setTimeout(function(){
+    typing.remove();
+    var m=document.createElement('div');
+    m.className='msg ai';
+    m.textContent=text;
+    msgs.appendChild(m);
+    msgs.scrollTop=msgs.scrollHeight;
+  },900);
+}
+function addUserMsg(text){
+  var msgs = document.getElementById('chatMessages');
+  if(!msgs) return;
+  var m=document.createElement('div');
+  m.className='msg user';
+  m.textContent=text;
+  msgs.appendChild(m);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function getMarcusReply(q){
+  var q2=q.toLowerCase();
+  for(var key in MARCUS_QA){
+    if(key!=='default' && q2.indexOf(key)>=0) return MARCUS_QA[key];
+  }
+  return MARCUS_QA.default;
+}
+function sendMsg(){
+  var inp = document.getElementById('chatInput');
+  if(!inp || !inp.value.trim()) return;
+  var text=inp.value.trim(); inp.value='';
+  addUserMsg(text);
+  var parish = state.parish ? ' The user is staying in '+state.parish+' parish.' : '';
+  var zone = state.geoZone ? ' They arrived via '+state.geoZone+'.' : '';
+  fetch('/api/claude',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-haiku-4-5',
+      max_tokens:280,
+      system:'You are Marcus, a friendly Bermuda tour guide AI. Concise answers under 90 words. Use 1-2 emojis naturally. Focus on Bermuda beaches, food, transport, nightlife, attractions, rum culture, local tips.'+parish+zone,
+      messages:[{role:'user',content:text}]
+    })
+  }).then(function(r){return r.json();})
+    .then(function(d){
+      var reply=(d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:getMarcusReply(text);
+      addAiMsg(reply);
+    })
+    .catch(function(){ addAiMsg(getMarcusReply(text)); });
+}
+function sendChip(el, text){
+  goScreen('chat');
+  setTimeout(function(){
+    addUserMsg(text);
+    addAiMsg(getMarcusReply(text));
+  }, 200);
+}
+
+// ══════════════════════════════════════
+// MARCUS FLOATING AVATAR
+// ══════════════════════════════════════
+var avatarTimer=null;
+function showAvatar(text){
+  var guide=document.getElementById('avatarGuide');
+  var bubble=document.getElementById('avatarBubble');
+  var textEl=document.getElementById('avatarText');
+  var btn=document.getElementById('avatarBtn');
+  if(!guide||!bubble||!textEl) return;
+  guide.classList.add('show');
+  if(text){
+    textEl.textContent=text;
+    bubble.style.display='';
+    if(btn) btn.classList.add('speaking');
+    clearTimeout(avatarTimer);
+    avatarTimer=setTimeout(function(){ hideAvatarBubble(); },6000);
+  }
+}
+function hideAvatarBubble(){
+  var bubble=document.getElementById('avatarBubble');
+  var btn=document.getElementById('avatarBtn');
+  if(bubble) bubble.style.display='none';
+  if(btn) btn.classList.remove('speaking');
+}
+function toggleAvatar(){
+  var bubble=document.getElementById('avatarBubble');
+  if(!bubble) return;
+  if(bubble.style.display==='none'||!bubble.style.display){
+    if(navigator.geolocation){
+      showAvatar('🧙🏾 Finding where you are...');
+      navigator.geolocation.getCurrentPosition(
+        function(pos){
+          fetch('/api/nearby-guide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:pos.coords.latitude,lng:pos.coords.longitude})})
+            .then(function(r){return r.json();})
+            .then(function(d){ showAvatar(d.ok&&d.guide ? d.guide.slice(0,200) : getMarcusGreeting()); })
+            .catch(function(){ showAvatar(getMarcusGreeting()); });
+        },
+        function(){ showAvatar(getMarcusGreeting()); },
+        {timeout:4000,maximumAge:60000}
+      );
+    } else {
+      showAvatar(getMarcusGreeting());
+    }
+  } else {
+    hideAvatarBubble();
+  }
+}
+
+// ══════════════════════════════════════
+// DOCK TIMER
+// ══════════════════════════════════════
+function startDockTimer(){
+  function update(){
+    var now=new Date();
+    var utc=now.getTime()+now.getTimezoneOffset()*60000;
+    var bdt=new Date(utc-3*3600000);
+    // Ship departs at 5pm Bermuda time
+    var depart=new Date(bdt); depart.setHours(17,0,0,0);
+    if(bdt>=depart) depart.setDate(depart.getDate()+1);
+    var diff=depart-bdt;
+    var h=Math.floor(diff/3600000), m=Math.floor((diff%3600000)/60000);
+    var el=document.getElementById('dockTimer');
+    if(el) el.textContent=h+'h '+m+'m to depart';
+  }
+  update(); setInterval(update,30000);
+}
+
+// ══════════════════════════════════════
+// BOOKING MODAL
+// ══════════════════════════════════════
+var curBooking={};
+function openBooking(name, emoji, desc, priceStr, price){
+  curBooking={name:name,emoji:emoji,desc:desc,price:price};
+  document.getElementById('bookingName').textContent=name;
+  document.getElementById('bookingDesc').textContent=desc;
+  document.getElementById('bookingEmoji').textContent=emoji;
+  document.getElementById('bookingPrice').textContent=price>0?'$'+price:'FREE';
+  // Dates
+  var dr=document.getElementById('dateRow'); dr.innerHTML='';
+  var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var now=new Date();
+  for(var i=0;i<5;i++){
+    var d=new Date(now); d.setDate(d.getDate()+i);
+    var btn=document.createElement('button');
+    btn.className='date-btn'+(i===0?' sel':'');
+    btn.innerHTML='<div class="db-day">'+(i===0?'Today':days[d.getDay()])+'</div><div class="db-num">'+d.getDate()+'</div><div style="font-size:10px;color:var(--muted);">'+months[d.getMonth()]+'</div>';
+    btn.onclick=(function(b){return function(){
+      document.querySelectorAll('.date-btn').forEach(function(x){x.classList.remove('sel');});
+      b.classList.add('sel');
+    };})(btn);
+    dr.appendChild(btn);
+  }
+  document.getElementById('bookingModal').classList.add('show');
+  document.getElementById('bookingOverlay').classList.add('show');
+}
+function closeBooking(){
+  document.getElementById('bookingModal').classList.remove('show');
+  document.getElementById('bookingOverlay').classList.remove('show');
+}
+function selTime(btn){
+  document.querySelectorAll('.time-btn').forEach(function(b){b.classList.remove('sel');});
+  btn.classList.add('sel');
+}
+function confirmBooking(){
+  closeBooking();
+  state.bookings.push({name:curBooking.name,date:new Date().toLocaleDateString(),price:curBooking.price});
+  saveState();
+  showToast('✅ '+curBooking.name+' booked! See you there.');
+}
+
+// ══════════════════════════════════════
+// PHOTOS
+// ══════════════════════════════════════
+function initPhotos(){
+  var grid=document.getElementById('photoGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+  for(var i=0;i<12;i++){
+    var slot=document.createElement('div');
+    slot.className='photo-slot'+(state.photos[i]?'':' empty');
+    slot.dataset.idx=i;
+    if(state.photos[i]){
+      var img=document.createElement('img');
+      img.src=state.photos[i]; slot.appendChild(img);
+      slot.onclick=(function(idx){return function(){showToast('Photo '+(idx+1)+' — tap to delete?');};})(i);
+    } else {
+      slot.innerHTML='<div class="add-icon">+</div>';
+      var inp=document.createElement('input');
+      inp.type='file'; inp.accept='image/*'; inp.style.display='none'; inp.dataset.idx=i;
+      inp.onchange=(function(idx,input){return function(){
+        var f=input.files[0]; if(!f) return;
+        var r=new FileReader();
+        r.onload=function(e){ state.photos[idx]=e.target.result; saveState(); initPhotos(); };
+        r.readAsDataURL(f);
+      };})(i,inp);
+      slot.appendChild(inp);
+      slot.onclick=(function(inp){return function(){inp.click();};})(inp);
+    }
+    grid.appendChild(slot);
+  }
+}
+function addPhoto(){
+  var empty=document.querySelector('.photo-slot.empty');
+  if(empty) empty.click();
+  else showToast('All 12 slots filled! Your album is complete.');
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function showToast(msg){
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},3000);
+}
+function setFilter(btn, filter){
+  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  showToast('Showing: '+filter.charAt(0).toUpperCase()+filter.slice(1));
+}
+function clearAll(){
+  if(confirm('Clear all ePass data? This cannot be undone.')){
+    localStorage.removeItem('epass_v4'); location.reload();
+  }
+}
+
+// ══════════════════════════════════════
+// PWA INSTALL
+// ══════════════════════════════════════
+var deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault(); deferredPrompt=e;
+  setTimeout(function(){ document.getElementById('installBanner').classList.add('show'); },4000);
+});
+document.getElementById('installBtn').addEventListener('click',function(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(){
+    deferredPrompt=null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+});
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded',function(){
+  // Handle PayPal return URL params
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    var trial = params.get('trial');
+    var exp = params.get('exp');
+    if(trial==='activated' && exp){
+      state.plan='premium'; state.trialExpires=null; state.trialStarted=null; saveState();
+      document.getElementById('paywall').classList.add('hidden');
+      history.replaceState({},document.title,window.location.pathname);
+      setTimeout(function(){ renderPassBadge(); showToast('🌟 Premium unlocked! Enjoy Bermuda!'); showAvatar('🎉 Welcome to full access! I am Marcus, your personal island guide.'); }, 600);
+    } else if(trial==='failed'){
+      history.replaceState({},document.title,window.location.pathname);
+      setTimeout(function(){ showToast('⚠️ Payment was not completed. Try again.'); }, 600);
+    } else if(trial==='cancelled'){
+      history.replaceState({},document.title,window.location.pathname);
+      setTimeout(function(){ showToast('Payment cancelled. Your free trial is still active.'); }, 600);
+    }
+  })();
+
+  // Day/night theme
+  applyDayNightTheme();
+
+  // Build parish grid
+  buildParishGrid();
+
+  // Live ticker
+  initTicker();
+
+  // Render itinerary
+  renderItinerary(1);
+
+  // Render photos
+  initPhotos();
+
+  // Pass badge
+  renderPassBadge();
+
+  // Dock timer
+  startDockTimer();
+
+  // Geo detection (runs after splash)
+  setTimeout(detectGeo, 500);
+
+  // Splash → app
+  setTimeout(function(){
+    document.getElementById('splash').classList.add('hide');
+    // Check if has access
+    if(hasAccess()){
+      document.getElementById('paywall').classList.add('hidden');
+      // Resume trial countdown if active
+      if(state.plan==='trial') startTrialCountdown();
+      // Show Marcus after a moment
+      setTimeout(function(){
+        var ag=document.getElementById('avatarGuide');
+        if(ag) ag.classList.add('show');
+        setTimeout(function(){ showAvatar(getMarcusGreeting()); }, 500);
+      }, 500);
+    }
+    // HOT NOW map (load after DOM visible)
+    setTimeout(initHotNow, 400);
+  }, 2400);
+});
+
+// ── PUSH NOTIFICATIONS ──
+function subscribeToPush(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
+  Notification.requestPermission().then(function(p){
+    if(p!=='granted'){ showToast('Enable notifications for HOT NOW alerts!'); return; }
+    navigator.serviceWorker.ready.then(function(reg){
+      fetch('/api/push/vapid-key')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          try {
+            var raw=atob(d.publicKey.replace(/-/g,'+').replace(/_/g,'/'));
+            var key=new Uint8Array(raw.length);
+            for(var i=0;i<raw.length;i++) key[i]=raw.charCodeAt(i);
+            reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key})
+              .then(function(sub){
+                return fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sub.toJSON())});
+              })
+              .then(function(){ showToast('🔔 HOT NOW alerts enabled!'); })
+              .catch(function(){});
+          } catch(e){}
+        }).catch(function(){});
+    });
+  });
+}
+
+// Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
+// bump Mon Sep  7 10:53:29 CEST 2026

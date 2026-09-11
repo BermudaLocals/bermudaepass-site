@@ -1,0 +1,11 @@
+# Cloudflare Pages Redirects
+# Bermuda ePass PWA - SPA routing support
+
+# Handle all routes for SPA
+/* /index.html 200
+
+# API routes (placeholder for future backend)
+/api/* /api/:splat 200
+
+# Health check
+/health /index.html 200
