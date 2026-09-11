@@ -485,7 +485,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
     <ul class="paywall-features">
       <li>Pre-book mopeds, tours & restaurants</li>
       <li>AI Guide Marcus — answers anything</li>
-      <li>Exclusive 20% vendor discounts</li>
+      <li>Instant booking on every experience</li>
       <li>3-day itinerary planner</li>
       <li>Offline photo memories gallery</li>
       <li>HOT NOW live island pulse map</li>
@@ -593,7 +593,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
         <div class="place-info">
           <div class="place-name">Horseshoe Bay</div>
           <div class="place-type">Pink Sand Beach</div>
-          <div class="place-badge">⭐ 4.9 · 20% off</div>
+          <div class="place-badge">⭐ 4.9 · Free access</div>
         </div>
       </div>
       <div class="place-card" onclick="openBooking('Tobacco Bay Snorkel','🤿','Snorkeling in crystal clear water','$55',55)">
@@ -629,7 +629,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
         <div class="section-link">View all</div>
       </div>
       <div class="packages-section" style="padding:0;">
-        <div class="package-card" onclick="openBooking('Bermuda Essentials','🇧🇲','Moped · Horseshoe Bay · Local Lunch · 20% discounts','$149',149)">
+        <div class="package-card" onclick="openBooking('Bermuda Essentials','🇧🇲','Moped · Horseshoe Bay · Local Lunch · Instant booking','$149',149)">
           <div class="pkg-img">
             <img src="horseshoe-beach.jpg" alt="Essentials" onerror="this.parentElement.style.background='linear-gradient(135deg,#1A7FB5,#4ABFDF)';">
             <div class="pkg-badge save">SAVE $46</div>
@@ -928,7 +928,7 @@ html,body{height:100%;overflow:hidden;font-family:'Outfit',sans-serif;background
         <div class="epass-meta">
           <div class="epass-meta-item"><label>Valid</label><span id="epassDate">Today</span></div>
           <div class="epass-meta-item"><label>Tier</label><span id="epassTier">Free Trial</span></div>
-          <div class="epass-meta-item"><label>Discounts</label><span>20% off</span></div>
+          <div class="epass-meta-item"><label>Booking</label><span>Instant</span></div>
         </div>
         <div class="epass-qr" id="epassQR">SCAN<br>QR<br>CODE</div>
         <div class="epass-tier trial-badge" id="epassTierBadge">⏱️ FREE TRIAL</div>
@@ -1759,6 +1759,14 @@ function showToast(msg){
 function setFilter(btn, filter){
   document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
+  // Real filtering - hide cards/markers that don't match
+  var targets = document.querySelectorAll('.explore-card, .place-card, .beach-item, .food-item, .bar-item, [data-cat]');
+  targets.forEach(function(el){
+    var cat = el.getAttribute('data-cat') || '';
+    if(!cat){ return; }  // no category info - leave visible
+    if(filter === 'all' || cat === filter){ el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  });
   showToast('Showing: '+filter.charAt(0).toUpperCase()+filter.slice(1));
 }
 function clearAll(){
@@ -1880,6 +1888,47 @@ function subscribeToPush(){
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
+</script>
+<script>
+// Bermuda ePass - Local Partners slider
+(function(){
+  function inject(){
+    var pills = document.querySelector('.filter-btn');
+    if(!pills) { return false; }
+    var container = pills.parentNode;
+    if(container.querySelector('.partners-section')) { return true; } // already added
+    var partners = [
+      {slug:'snorkel-park', name:'Snorkel Park', desc:'Dockyard beach', img:'/images/vendors/snorkel-park-1.jpg'},
+      {slug:'tobacco-bay', name:'Tobacco Bay', desc:"St George's snorkel", img:'/images/vendors/tobacco-bay-1.jpg'},
+      {slug:'hartley', name:'Hartley\'s', desc:'Helmet diving', img:'/images/vendors/hartley-1.jpg'},
+      {slug:'rugged', name:'Rugged', desc:'Airport EV', img:'/images/vendors/rugged-1.jpg'},
+      {slug:'grotto-bay', name:'Grotto Bay', desc:'Cave resort', img:'/images/vendors/grotto-bay-1.jpg'},
+      {slug:'coco-reef', name:'Coco Reef', desc:'Pink sand resort', img:'/images/vendors/coco-reef-1.jpg'},
+      {slug:'astwood-arms', name:'Astwood Arms', desc:'Front St pub', img:'/images/vendors/astwood-arms-1.jpg'},
+      {slug:'island-tours', name:'Island Tours', desc:'Dockyard tours', img:'/images/vendors/island-tours-1.jpg'}
+    ];
+    var h = '<div class="partners-section" style="padding:12px 0 8px;">';
+    h += '<div style="font-size:14px;font-weight:700;padding:0 16px 8px;color:#0A1628;font-family:Outfit,sans-serif;">🇧🇲 Local Partners</div>';
+    h += '<div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px 12px;-webkit-overflow-scrolling:touch;">';
+    partners.forEach(function(p){
+      h += '<a href="/' + p.slug + '/" style="flex:0 0 130px;scroll-snap-align:start;background:#fff;border-radius:12px;overflow:hidden;text-decoration:none;color:#0A1628;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:block;">';
+      h += '<img src="' + p.img + '" style="width:100%;height:85px;object-fit:cover;display:block;" loading="lazy">';
+      h += '<div style="padding:8px;"><strong style="display:block;font-size:13px;">' + p.name + '</strong><span style="font-size:11px;color:#6B7B84;">' + p.desc + '</span></div>';
+      h += '</a>';
+    });
+    h += '</div></div>';
+    container.insertAdjacentHTML('afterend', h);
+    return true;
+  }
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inject);
+  } else {
+    inject();
+  }
+  // Retry in case EXPLORE screen renders late
+  setTimeout(inject, 500);
+  setTimeout(inject, 1500);
+})();
 </script>
 </body>
 </html>
